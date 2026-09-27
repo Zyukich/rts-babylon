@@ -1,0 +1,229 @@
+{
+  "version": 5,
+  "units": {
+    "villager": {
+      "file": "adventurers/addons/kaykit_character_pack_adventures/Characters/gltf/Rogue_Hooded.glb",
+      "anims": {
+        "idle": {
+          "file": "adventurers/addons/kaykit_character_pack_adventures/Characters/gltf/Rogue_Hooded.glb",
+          "name": "Idle"
+        },
+        "walk": {
+          "file": "adventurers/addons/kaykit_character_pack_adventures/Characters/gltf/Rogue_Hooded.glb",
+          "name": "Walking_A"
+        },
+        "attack": {
+          "file": "adventurers/addons/kaykit_character_pack_adventures/Characters/gltf/Rogue_Hooded.glb",
+          "name": "1H_Melee_Attack_Chop"
+        },
+        "shoot": {
+          "file": "adventurers/addons/kaykit_character_pack_adventures/Characters/gltf/Rogue_Hooded.glb",
+          "name": "2H_Ranged_Shoot"
+        },
+        "work": {
+          "file": "adventurers/addons/kaykit_character_pack_adventures/Characters/gltf/Rogue_Hooded.glb",
+          "name": "Interact"
+        },
+        "die": {
+          "file": "adventurers/addons/kaykit_character_pack_adventures/Characters/gltf/Rogue_Hooded.glb",
+          "name": "Death_A"
+        }
+      }
+    },
+    "clubman": {
+      "file": "adventurers/addons/kaykit_character_pack_adventures/Characters/gltf/Barbarian.glb",
+      "anims": {
+        "idle": {
+          "file": "adventurers/addons/kaykit_character_pack_adventures/Characters/gltf/Barbarian.glb",
+          "name": "Idle"
+        },
+        "walk": {
+          "file": "adventurers/addons/kaykit_character_pack_adventures/Characters/gltf/Barbarian.glb",
+          "name": "Walking_A"
+        },
+        "attack": {
+          "file": "adventurers/addons/kaykit_character_pack_adventures/Characters/gltf/Barbarian.glb",
+          "name": "1H_Melee_Attack_Chop"
+        },
+        "shoot": {
+          "file": "adventurers/addons/kaykit_character_pack_adventures/Characters/gltf/Barbarian.glb",
+          "name": "2H_Ranged_Shoot"
+        },
+        "work": {
+          "file": "adventurers/addons/kaykit_character_pack_adventures/Characters/gltf/Barbarian.glb",
+          "name": "Interact"
+        },
+        "die": {
+          "file": "adventurers/addons/kaykit_character_pack_adventures/Characters/gltf/Barbarian.glb",
+          "name": "Death_A"
+        }
+      }
+    },
+    "spearman": {
+      "file": "adventurers/addons/kaykit_character_pack_adventures/Characters/gltf/Knight.glb",
+      "anims": {
+        "idle": {
+          "file": "adventurers/addons/kaykit_character_pack_adventures/Characters/gltf/Knight.glb",
+          "name": "Idle"
+        },
+        "walk": {
+          "file": "adventurers/addons/kaykit_character_pack_adventures/Characters/gltf/Knight.glb",
+          "name": "Walking_A"
+        },
+        "attack": {
+          "file": "adventurers/addons/kaykit_character_pack_adventures/Characters/gltf/Knight.glb",
+          "name": "1H_Melee_Attack_Chop"
+        },
+        "shoot": {
+          "file": "adventurers/addons/kaykit_character_pack_adventures/Characters/gltf/Knight.glb",
+          "name": "2H_Ranged_Shoot"
+        },
+        "work": {
+          "file": "adventurers/addons/kaykit_character_pack_adventures/Characters/gltf/Knight.glb",
+          "name": "Interact"
+        },
+        "die": {
+          "file": "adventurers/addons/kaykit_character_pack_adventures/Characters/gltf/Knight.glb",
+          "name": "Death_A"
+        }
+      }
+    },
+    "archer": {
+      "file": "adventurers/addons/kaykit_character_pack_adventures/Characters/gltf/Rogue.glb",
+      "anims": {
+        "idle": {
+          "file": "adventurers/addons/kaykit_character_pack_adventures/Characters/gltf/Rogue.glb",
+          "name": "Idle"
+        },
+        "walk": {
+          "file": "adventurers/addons/kaykit_character_pack_adventures/Characters/gltf/Rogue.glb",
+          "name": "Walking_A"
+        },
+        "attack": {
+          "file": "adventurers/addons/kaykit_character_pack_adventures/Characters/gltf/Rogue.glb",
+          "name": "1H_Melee_Attack_Chop"
+        },
+        "shoot": {
+          "file": "adventurers/addons/kaykit_character_pack_adventures/Characters/gltf/Rogue.glb",
+          "name": "2H_Ranged_Shoot"
+        },
+        "work": {
+          "file": "adventurers/addons/kaykit_character_pack_adventures/Characters/gltf/Rogue.glb",
+          "name": "Interact"
+        },
+        "die": {
+          "file": "adventurers/addons/kaykit_character_pack_adventures/Characters/gltf/Rogue.glb",
+          "name": "Death_A"
+        }
+      }
+    },
+    "swordsman": {
+      "file": "adventurers/addons/kaykit_character_pack_adventures/Characters/gltf/Knight.glb",
+      "anims": {
+        "idle": {
+          "file": "adventurers/addons/kaykit_character_pack_adventures/Characters/gltf/Knight.glb",
+          "name": "Idle"
+        },
+        "walk": {
+          "file": "adventurers/addons/kaykit_character_pack_adventures/Characters/gltf/Knight.glb",
+          "name": "Walking_A"
+        },
+        "attack": {
+          "file": "adventurers/addons/kaykit_character_pack_adventures/Characters/gltf/Knight.glb",
+          "name": "1H_Melee_Attack_Chop"
+        },
+        "shoot": {
+          "file": "adventurers/addons/kaykit_character_pack_adventures/Characters/gltf/Knight.glb",
+          "name": "2H_Ranged_Shoot"
+        },
+        "work": {
+          "file": "adventurers/addons/kaykit_character_pack_adventures/Characters/gltf/Knight.glb",
+          "name": "Interact"
+        },
+        "die": {
+          "file": "adventurers/addons/kaykit_character_pack_adventures/Characters/gltf/Knight.glb",
+          "name": "Death_A"
+        }
+      }
+    }
+  },
+  "buildings": {
+    "town_center": [
+      "hexagon/addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/blue/building_castle_blue.gltf",
+      "hexagon/addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/red/building_castle_red.gltf",
+      "hexagon/addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/yellow/building_castle_yellow.gltf",
+      "hexagon/addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/green/building_castle_green.gltf"
+    ],
+    "house": [
+      "hexagon/addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/blue/building_home_A_blue.gltf",
+      "hexagon/addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/red/building_home_A_red.gltf",
+      "hexagon/addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/yellow/building_home_A_yellow.gltf",
+      "hexagon/addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/green/building_home_A_green.gltf"
+    ],
+    "barracks": [
+      "hexagon/addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/blue/building_barracks_blue.gltf",
+      "hexagon/addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/red/building_barracks_red.gltf",
+      "hexagon/addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/yellow/building_barracks_yellow.gltf",
+      "hexagon/addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/green/building_barracks_green.gltf"
+    ],
+    "archery": [
+      "hexagon/addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/blue/building_archeryrange_blue.gltf",
+      "hexagon/addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/red/building_archeryrange_red.gltf",
+      "hexagon/addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/yellow/building_archeryrange_yellow.gltf",
+      "hexagon/addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/green/building_archeryrange_green.gltf"
+    ],
+    "workshop": [
+      "hexagon/addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/blue/building_blacksmith_blue.gltf",
+      "hexagon/addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/red/building_blacksmith_red.gltf",
+      "hexagon/addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/yellow/building_blacksmith_yellow.gltf",
+      "hexagon/addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/green/building_blacksmith_green.gltf"
+    ],
+    "camp": [
+      "hexagon/addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/blue/building_lumbermill_blue.gltf",
+      "hexagon/addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/red/building_lumbermill_red.gltf",
+      "hexagon/addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/yellow/building_lumbermill_yellow.gltf",
+      "hexagon/addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/green/building_lumbermill_green.gltf"
+    ],
+    "tower": [
+      "hexagon/addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/blue/building_tower_A_blue.gltf",
+      "hexagon/addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/red/building_tower_A_red.gltf",
+      "hexagon/addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/yellow/building_tower_A_yellow.gltf",
+      "hexagon/addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/green/building_tower_A_green.gltf"
+    ],
+    "wall": [
+      "hexagon/addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/neutral/wall_straight.gltf",
+      "hexagon/addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/neutral/wall_straight.gltf",
+      "hexagon/addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/neutral/wall_straight.gltf",
+      "hexagon/addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/neutral/wall_straight.gltf"
+    ],
+    "gate": [
+      "hexagon/addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/neutral/wall_corner_A_gate.gltf",
+      "hexagon/addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/neutral/wall_corner_A_gate.gltf",
+      "hexagon/addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/neutral/wall_corner_A_gate.gltf",
+      "hexagon/addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/neutral/wall_corner_A_gate.gltf"
+    ]
+  },
+  "nature": {
+    "trees": [
+      "hexagon/addons/kaykit_medieval_hexagon_pack/Assets/gltf/decoration/nature/tree_single_A.gltf",
+      "hexagon/addons/kaykit_medieval_hexagon_pack/Assets/gltf/decoration/nature/tree_single_B.gltf",
+      "hexagon/addons/kaykit_medieval_hexagon_pack/Assets/gltf/decoration/nature/tree_single_A_cut.gltf"
+    ],
+    "rock": "hexagon/addons/kaykit_medieval_hexagon_pack/Assets/gltf/decoration/nature/rock_single_A.gltf",
+    "bush": null
+  },
+  "textures": {
+    "grass": "textures/grass.jpg",
+    "grass_n": "textures/grass_n.jpg",
+    "rock": "textures/rock.jpg",
+    "rock_n": "textures/rock_n.jpg",
+    "sand": "textures/sand.jpg",
+    "sand_n": "textures/sand_n.jpg",
+    "bark": "textures/bark.jpg",
+    "bark_n": "textures/bark_n.jpg",
+    "dirt": "textures/dirt.jpg",
+    "dirt_n": "textures/dirt_n.jpg",
+    "boulder": "textures/boulder.jpg",
+    "boulder_n": "textures/boulder_n.jpg"
+  }
+}

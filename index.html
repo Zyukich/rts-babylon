@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>ЭПОХИ</title>
+<style>
+  :root { --gold: #c9a35a; --gold2: #7a5c2e; --panel: #1b1712; --panel2: #2a231a; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #111; font: 14px 'Segoe UI', system-ui, sans-serif; color: #eadfc8; user-select: none; }
+  #c { width: 100%; height: 100%; display: block; touch-action: none; outline: none; }
+  /* ---- верх ---- */
+  #topbar { position: fixed; top: 0; left: 0; right: 0; height: 34px; display: flex; justify-content: space-between; align-items: flex-start; pointer-events: none; }
+  #status, #res { margin: 4px 8px; padding: 4px 10px; background: linear-gradient(#2a231acc, #15110ccc); border: 1px solid var(--gold2); border-radius: 4px; display: flex; gap: 14px; pointer-events: auto; }
+  #res span, #status span { white-space: nowrap; }
+  #res b { color: #fff; font-weight: 600; }
+  #agebar { margin-top: 0; min-width: 260px; padding: 3px 24px 6px; text-align: center; background: linear-gradient(#3a2f20, #1b1712); border: 2px solid var(--gold); border-top: none; border-radius: 0 0 14px 14px; box-shadow: 0 3px 10px #0008; }
+  #agename { color: #f3d08a; font-size: 16px; font-weight: 600; }
+  #agesub { color: #e0b060; font-size: 12px; }
+  #hover { position: fixed; top: 40px; left: 8px; font-size: 13px; color: #f3e6c8; text-shadow: 0 1px 3px #000; pointer-events: none; }
+  #menu { position: fixed; top: 40px; right: 10px; z-index: 2; font-size: 12px; }
+  #menu select { background: var(--panel); color: #eadfc8; border: 1px solid var(--gold2); }
+  #online { color: #9cf; margin-left: 8px; }
+  #news { position: fixed; top: 64px; width: 100%; text-align: center; color: #fd6; font-size: 18px; text-shadow: 0 1px 4px #000; pointer-events: none; }
+  /* ---- уведомления слева ---- */
+  #alerts { position: fixed; left: 0; bottom: 186px; display: flex; flex-direction: column; gap: 4px; }
+  .al { padding: 6px 14px 6px 10px; background: linear-gradient(90deg, #2f4a1ecc, #2f4a1e55); border-left: 3px solid #8fc05a; cursor: pointer; font-size: 13px; }
+  .al.warn { background: linear-gradient(90deg, #6a1e1ecc, #6a1e1e55); border-color: #ff6a5a; }
+  .al.info { background: linear-gradient(90deg, #3a3020cc, #3a302055); border-color: var(--gold); cursor: default; }
+  /* ---- нижняя панель ---- */
+  #hud { position: fixed; left: 0; right: 0; bottom: 0; height: 176px; display: flex; gap: 8px; padding: 6px 8px 8px; box-sizing: border-box;
+    background: linear-gradient(#2c251c, #15110c); border-top: 2px solid var(--gold); box-shadow: 0 -4px 12px #0009; }
+  .frame { background: var(--panel); border: 2px solid var(--gold2); border-radius: 6px; box-shadow: inset 0 0 12px #000c; }
+  #mmbox { width: 164px; height: 164px; padding: 0; overflow: hidden; }
+  #mm { display: block; cursor: pointer; }
+  #sel { flex: 1; padding: 8px 12px; overflow: hidden; }
+  #cmd { width: 360px; padding: 6px; overflow-y: auto; }
+  #btns { display: grid; grid-template-columns: repeat(6, 54px); gap: 4px; }
+  #btns .hdr { grid-column: 1 / -1; font-size: 11px; color: var(--gold); padding: 2px 0 0; }
+  .b { position: relative; width: 54px; height: 54px; font-size: 27px; line-height: 54px; text-align: center; cursor: pointer;
+    background: radial-gradient(#4a3d2b, #211a12); border: 2px solid var(--gold2); border-radius: 6px; box-sizing: border-box; }
+  .b:hover { border-color: #f3d08a; box-shadow: 0 0 8px #f3d08a66; }
+  .b.off { filter: grayscale(1) brightness(.55); cursor: default; }
+  .b i { position: absolute; top: 1px; left: 3px; font: bold 11px sans-serif; color: #f3d08a; line-height: 12px; font-style: normal; }
+  .b u { position: absolute; bottom: 1px; right: 3px; font: 10px sans-serif; color: #fff; line-height: 11px; text-decoration: none; text-shadow: 0 0 2px #000; }
+  /* ---- выделение ---- */
+  .pv { display: flex; gap: 14px; }
+  .portrait { width: 92px; height: 92px; font-size: 56px; line-height: 92px; text-align: center; background: radial-gradient(#5a4a33, #1c160f); border: 2px solid var(--gold); border-radius: 8px; flex: none; }
+  .nm { font-size: 18px; color: #f3d08a; font-weight: 600; }
+  .sub { font-size: 12px; color: #b9a887; margin-bottom: 4px; }
+  .hp { width: 220px; height: 10px; background: #300; border: 1px solid #000; margin: 4px 0; }
+  .hp div { height: 100%; }
+  .stats { font-size: 13px; display: flex; gap: 12px; flex-wrap: wrap; }
+  .slots { display: flex; gap: 4px; margin-top: 6px; }
+  .slot { position: relative; width: 40px; height: 40px; font-size: 22px; line-height: 40px; text-align: center; background: #2a2218; border: 1px solid var(--gold2); border-radius: 4px; cursor: pointer; }
+  .slot:hover { border-color: #ff6a5a; }
+  .slot .pb { position: absolute; left: 0; bottom: 0; height: 4px; background: #8fc05a; }
+  .slot u { position: absolute; bottom: 0; right: 2px; font: 10px sans-serif; text-decoration: none; }
+  .grp { display: flex; flex-wrap: wrap; gap: 4px; }
+  .hint { color: #a89878; font-size: 12px; line-height: 1.6; }
+  #tip { position: fixed; display: none; max-width: 260px; padding: 8px 10px; background: #15110cf2; border: 1px solid var(--gold); border-radius: 4px; font-size: 13px; pointer-events: none; z-index: 30; }
+  #tip b { color: #f3d08a; }
+  #box { position: fixed; border: 1px solid #fff; background: #fff2; pointer-events: none; display: none; }
+  #end { position: fixed; inset: 5% 20%; overflow: auto; background: #15110cf2; border: 2px solid var(--gold); border-radius: 8px; padding: 16px 28px; z-index: 20; text-align: center; }
+  #end .chron { text-align: left; max-width: 520px; margin: 0 auto; line-height: 1.6; }
+  #end button { padding: 10px 24px; font-size: 16px; }
+  /* ---- главное меню ---- */
+  body.menu #topbar, body.menu #hud, body.menu #alerts, body.menu #menu, body.menu #news, body.menu #hover, body.menu #tip { display: none !important; }
+  #menuRoot { position: fixed; inset: 0; z-index: 50; display: flex; pointer-events: none; }
+  #menuRoot > * { pointer-events: auto; }
+  .mside { width: 330px; padding: 56px 40px 24px; background: linear-gradient(90deg, #15110cee, #15110c00); display: flex; flex-direction: column; gap: 12px; }
+  .mtitle { font: 700 58px Georgia, serif; color: #f3d08a; text-shadow: 0 3px 14px #000; letter-spacing: 8px; }
+  .msub { color: #d9c49a; margin: -6px 0 26px; text-shadow: 0 1px 4px #000; }
+  .mbtn { padding: 12px 18px; font-size: 17px; text-align: left; color: #f3e6c8; background: linear-gradient(#3a2f20e6, #1b1712e6); border: 2px solid var(--gold2); border-radius: 6px; cursor: pointer; font-family: inherit; }
+  .mbtn:hover:not([disabled]) { border-color: var(--gold); box-shadow: 0 0 12px #f3d08a55; }
+  .mbtn[disabled] { opacity: .45; cursor: default; }
+  .mbtn.sm { padding: 4px 12px; font-size: 13px; }
+  .mpanel { margin: 40px auto; width: min(960px, 92vw); max-height: 86vh; overflow: auto; padding: 22px 28px; background: #15110cf2; border: 2px solid var(--gold); border-radius: 10px; box-shadow: 0 10px 40px #000a; }
+  .mpanel h2 { margin: 0 0 14px; color: #f3d08a; }
+  .mtabs { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+  .mtab { padding: 6px 14px; border: 1px solid var(--gold2); border-radius: 4px; cursor: pointer; }
+  .mtab.on { background: #3a2f20; border-color: var(--gold); color: #f3d08a; }
+  .mrow { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 7px 0; border-bottom: 1px solid #ffffff10; }
+  .mrow select, .mrow input[type=text], .mrow input[type=number], table.slots select { background: #211a12; color: #eadfc8; border: 1px solid var(--gold2); padding: 4px 6px; font-family: inherit; }
+  .mrow select, .mrow input[type=text] { min-width: 190px; }
+  .mrow input[type=range] { width: 200px; vertical-align: middle; }
+  .mgrid { display: grid; grid-template-columns: 1fr 1.25fr; gap: 26px; }
+  table.slots { border-collapse: collapse; width: 100%; } table.slots th { text-align: left; color: #c9a35a; font-weight: 500; padding: 4px; } table.slots td { padding: 3px 4px; }
+  .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: middle; border: 1px solid #0008; }
+  .merr { color: #ff8a7a; min-height: 22px; margin-top: 8px; }
+  .mfoot { display: flex; justify-content: space-between; margin-top: 12px; }
+  #pause { position: fixed; inset: 0; z-index: 40; background: #0009; display: none; align-items: center; justify-content: center; }
+  #msg { position: fixed; top: 40%; width: 100%; text-align: center; font-size: 42px; display: none; text-shadow: 0 2px 8px #000; }
+</style>
+</head>
+<body class="menu">
+<canvas id="c"></canvas>
+<div id="topbar"><div id="status"></div><div id="agebar"><div id="agename"></div><div id="agesub"></div></div><div id="res"></div></div>
+<div id="hover"></div>
+<div id="menu"><button id="menuBtn" class="mbtn sm">☰ Меню (F10)</button></div>
+<div id="pause"><div class="mpanel" style="width:320px;text-align:center"><h2>Пауза</h2><button class="mbtn" id="pResume" style="width:100%;margin-bottom:10px">▶ Продолжить</button><button class="mbtn" id="pExit" style="width:100%">⏏ Выйти в главное меню</button></div></div>
+<div id="news"></div>
+<div id="alerts"></div>
+<div id="hud">
+  <div id="mmbox" class="frame"><canvas id="mm" width="160" height="160"></canvas></div>
+  <div id="sel" class="frame"><div id="info"></div></div>
+  <div id="cmd" class="frame"><div id="btns"></div></div>
+</div>
+<div id="tip"></div>
+<div id="box"></div>
+<div id="msg"></div>
+<script type="module" src="/src/app.ts"></script>
+</body>
+</html>
