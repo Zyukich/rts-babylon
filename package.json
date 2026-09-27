@@ -7,7 +7,9 @@
     "demo": "node --experimental-strip-types --no-warnings src/demo.ts",
     "server": "node --experimental-strip-types --no-warnings server/server.ts",
     "predev": "node scripts/fetch-assets.mjs --if-missing",
-    "assets": "node scripts/fetch-assets.mjs"
+    "assets": "node scripts/fetch-assets.mjs",
+    "typecheck": "tsc -p .",
+    "test": "npm run typecheck && npm run demo"
   },
   "dependencies": {
     "@babylonjs/core": "^8.0.0",

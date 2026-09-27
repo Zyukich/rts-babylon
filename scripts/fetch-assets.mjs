@@ -5,7 +5,7 @@ import path from 'node:path';
 import { unzipSync } from 'fflate';
 
 const OUT = 'public/assets';
-const VERSION = 5; // меняется, когда меняется логика подбора — тогда манифест пересобирается без повторной закачки
+const VERSION = 6; // меняется, когда меняется логика подбора — тогда манифест пересобирается без повторной закачки
 const FORCE = process.argv.includes('--force');
 // Наборы Quaternius (и любые другие): положи скачанные .zip в папку assets-src — распакуются в public/assets/quaternius
 const SRC = 'assets-src', zips = fs.existsSync(SRC) ? fs.readdirSync(SRC).filter((f) => f.toLowerCase().endsWith('.zip')) : [];
@@ -113,6 +113,7 @@ const B_PICK = { // [ключи по приоритету, исключения]
   archery: [['archeryrange', 'archery_range', 'archery'], []],
   stable: [['stable'], []],
   workshop: [['workshop', 'blacksmith'], []],
+  market: [['market'], []],
   camp: [['lumbermill', 'mine', 'tent'], []],
   tower: [['watchtower', 'tower'], ['wall']],
   wall: [['wall_straight', 'wall'], ['gate', 'corner', 'tower']],
@@ -123,6 +124,30 @@ for (const [type, [keys, ex]] of Object.entries(B_PICK)) {
   const plain = pick(statics, keys, [...BAD, ...ex, ...COLORS]) ?? pick(statics, keys, [...BAD, ...ex]);
   const files = COLORS.map((c) => (pick(statics.filter((a) => a.base.includes(c)), keys, [...BAD, ...ex]) ?? plain)?.file).filter(Boolean);
   if (files.length) buildings[type] = files;
+}
+// Пак Quaternius «Ultimate Fantasy RTS» (положить .zip в assets-src): здания по эпохам пака (дерево → камень),
+// у каждого 3 стадии стройки (Level1 — каркас, Level3 — готово). Формат: тип → [эпоха][вариант][стадия]
+const byBase = new Map(all.map((a) => [a.base, a.file]));
+const stages = (p) => {
+  const l = [1, 2, 3].map((n) => byBase.get(`${p}_level${n}`) ?? (n === 3 ? byBase.get(`${p}_leve3`) : undefined)).filter(Boolean); // в паке опечатка: Storage_FirstAge_Leve3
+  return l.length ? l : [byBase.get(p)].filter(Boolean);
+};
+const Q_PICK = {
+  town_center: [['towerhouse_firstage'], ['towerhouse_secondage']],
+  house: [['houses_firstage_1', 'houses_firstage_2', 'houses_firstage_3'], ['houses_secondage_1', 'houses_secondage_2', 'houses_secondage_3']],
+  barracks: [['barracks_firstage'], ['barracks_secondage']],
+  archery: [['archery_firstage'], ['archery_secondage']],
+  camp: [['mine'], ['mine']],                                 // лагерь добытчиков — шахта с тележками
+  market: [['market_firstage'], ['market_secondage']],
+  pasture: [['windmill_firstage'], ['windmill_secondage']],  // ферма: мельница
+  stable: [['storage_firstage'], ['storage_secondage']],     // конюшня — большой амбар
+  workshop: [['temple_firstage'], ['temple_secondage']],
+  tower: [['watchtower_firstage'], ['watchtower_secondage']],
+};
+const staged = {};
+for (const [type, tiers] of Object.entries(Q_PICK)) {
+  const t = tiers.map((vs) => vs.map(stages).filter((l) => l.length)).filter((vs) => vs.length);
+  if (t.length) staged[type] = t;
 }
 const NAT_BAD = ['dead', 'tile', 'hex', 'mountain', 'hill', 'cloud', 'base'];
 const trees = statics.filter((a) => a.base.includes('tree') && !NAT_BAD.some((x) => a.base.includes(x)))
@@ -146,7 +171,7 @@ const findAnim = (key, prefer) => {
   for (const src of [prefer, ...libs]) for (const re of ANIM[key]) { const n = src.anims.find((x) => re.test(x)); if (n) return { file: src.file, name: n }; }
   return null;
 };
-const U_PICK = { villager: ['rogue_hooded', 'mage'], clubman: ['barbarian'], spearman: ['knight'], archer: ['rogue'], swordsman: ['knight'] };
+const U_PICK = { villager: ['rogue_hooded', 'mage'], clubman: ['barbarian'], spearman: ['knight'], archer: ['rogue'], swordsman: ['knight'], hunter: ['barbarian'], legionary: ['knight'], crossbowman: ['rogue'] };
 const units = {};
 for (const [type, keys] of Object.entries(U_PICK)) {
   const c = pick(all.filter((a) => a.skinned), keys);
@@ -158,8 +183,9 @@ for (const [type, keys] of Object.entries(U_PICK)) {
 const textures = Object.fromEntries(Object.keys(TEXTURES).flatMap((k) => [k, k + '_n']).filter((k) => fs.existsSync(`${OUT}/textures/${k}.jpg`)).map((k) => [k, `textures/${k}.jpg`]));
 // Список всех моделей — пришли этот файл, чтобы подключить новые наборы
 fs.writeFileSync(`${OUT}/models-list.txt`, all.map((a) => `${a.file}${a.skinned ? ' [скелет]' : ''}${a.anims.length ? ` [анимаций: ${a.anims.length}: ${a.anims.slice(0, 40).join(', ')}]` : ''}`).join('\n'));
-fs.writeFileSync(`${OUT}/manifest.json`, JSON.stringify({ version: VERSION, units, buildings, nature, textures }, null, 2));
+fs.writeFileSync(`${OUT}/manifest.json`, JSON.stringify({ version: VERSION, units, buildings, staged, nature, textures }, null, 2));
 console.log(`  Модели юнитов: ${Object.keys(units).join(', ') || '—'}`);
 console.log(`  Здания: ${Object.keys(buildings).join(', ') || '—'}`);
+console.log(`  Здания Quaternius (по эпохам, со стадиями стройки): ${Object.keys(staged).join(", ") || "— (нет архива в assets-src)"}`);
 console.log(`  Природа: деревьев ${trees.length}, камни ${nature.rock ? 'да' : 'нет'}, кусты ${nature.bush ? 'да' : 'нет'}; текстуры: ${Object.keys(textures).join(', ') || '—'}`);
 console.log('Готово. Чего нет — будет нарисовано процедурно.');

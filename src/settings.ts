@@ -8,14 +8,14 @@ export interface Settings {
   name: string; server: string;
 }
 export const PRESETS: Record<string, Partial<Settings>> = {
-  low: { renderScale: 0.75, msaa: false, fxaa: true, shadows: 0, ssao: false, bloom: false, vignette: false, grass: 30, grassDist: 60, wind: true },
-  medium: { renderScale: 1, msaa: true, fxaa: true, shadows: 1024, ssao: false, bloom: true, vignette: true, grass: 70, grassDist: 80, wind: true },
-  high: { renderScale: 1, msaa: true, fxaa: true, shadows: 2048, ssao: true, bloom: true, vignette: true, grass: 100, grassDist: 100, wind: true },
-  ultra: { renderScale: 1.25, msaa: true, fxaa: true, shadows: 4096, ssao: true, bloom: true, vignette: true, grass: 150, grassDist: 130, wind: true },
+  low: { renderScale: 0.75, msaa: false, fxaa: true, shadows: 0, ssao: false, bloom: false, vignette: false, grass: 0, grassDist: 60, wind: true },
+  medium: { renderScale: 1, msaa: true, fxaa: true, shadows: 1024, ssao: false, bloom: true, vignette: true, grass: 0, grassDist: 80, wind: true },
+  high: { renderScale: 1, msaa: true, fxaa: true, shadows: 2048, ssao: true, bloom: true, vignette: true, grass: 0, grassDist: 100, wind: true },
+  ultra: { renderScale: 1.25, msaa: true, fxaa: true, shadows: 4096, ssao: true, bloom: true, vignette: true, grass: 0, grassDist: 130, wind: true },
 };
 export const DEFAULTS: Settings = {
   preset: 'high', renderScale: 1, msaa: true, fxaa: true, shadows: 2048, ssao: true, bloom: true, vignette: true,
-  saturation: 38, grass: 100, grassDist: 100, wind: true, fpsLimit: 0, showFps: false,
+  saturation: 10, grass: 0, grassDist: 100, wind: true, fpsLimit: 0, showFps: false,
   master: 80, sfx: 80, music: 60,
   camSpeed: 1, edgeScroll: true, hpBars: 'damaged', uiScale: 1, hints: true,
   name: 'Игрок', server: '',
@@ -55,7 +55,7 @@ export const FIELDS: Field[] = [
 ];
 export const KEYS: [string, string][] = [
   ['ЛКМ / рамка', 'Выбрать / выбрать группу'], ['Двойной клик', 'Все такие же на экране'], ['ПКМ', 'Приказ (для зданий — точка сбора)'], ['Shift+ПКМ', 'Приказ в очередь'],
-  ['F + ЛКМ', 'Атака с движением'], ['X', 'Стоп'], ['Del', 'Снести / распустить'], ['H', 'К столице'], ['.', 'Следующий бездельник'], [',', 'Вся армия'],
+  ['F + ЛКМ', 'Атака с движением'], ['X', 'Стоп'], ['Z', 'Формация отряда: квадрат → линия → клин → черепаха'], ['Del', 'Снести / распустить'], ['H', 'К столице'], ['.', 'Следующий бездельник'], [',', 'Вся армия'],
   ['Ctrl/Shift + 1…9', 'Запомнить группу'], ['1…9', 'Выбрать группу'], ['Пробел', 'К месту атаки'], ['Буквы на кнопках', 'Команды панели'],
   ['WASD / стрелки / край экрана', 'Камера'], ['Колесо', 'Приближение'], ['Home / End', 'Поворот камеры'], ['O', 'Тени вкл/выкл'], ['P', 'SSAO вкл/выкл'], ['F10', 'Пауза / меню'],
 ];

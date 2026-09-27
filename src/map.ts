@@ -35,6 +35,7 @@ export function genMap(w: World, starts: [number, number][]) {
   scatter(18, 2, 4, (i) => setRes(i, 'wood'));
   scatter(5, 1, 2, (i) => setRes(i, 'stone'));
   scatter(5, 1, 2, (i) => setRes(i, 'iron'));
+  scatter(4, 1, 2, (i) => setRes(i, 'gold')); // золотые жилы — реже железа
   scatter(6, 1, 2, (i) => setRes(i, 'food'));
 
   for (const [sx, sy] of starts) {
@@ -46,7 +47,7 @@ export function genMap(w: World, starts: [number, number][]) {
       blob(sx + dx * dist, sy + dy * dist, r, (i) => setRes(i, res));
     };
     place(0, 9, 3, 'wood'); place(3, 9, 3, 'wood');
-    place(1, 5, 2, 'food'); place(5, 7, 2, 'stone'); place(6, 9, 2, 'iron');
+    place(1, 5, 2, 'food'); place(5, 7, 2, 'stone'); place(6, 9, 2, 'iron'); place(2, 12, 1, 'gold'); // небольшая жила недалеко от дома
   }
 
   // Регионы: диаграмма Вороного по «дрожащей» сетке 4×4

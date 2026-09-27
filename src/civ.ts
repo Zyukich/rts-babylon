@@ -1,7 +1,7 @@
 // Цивилизация: направления развития, культура и хроника.
 // Идея: два игрока одной эпохи расходятся. Слотов исследований мало — приходится выбирать направление,
 // а культура растёт от поведения (воюешь — военная, добываешь — торговая…) и сама даёт бонусы.
-import { UNITS, BUILDINGS, AGE_COST, AGE_NAMES, GATHER_TICKS, FARM_TICKS, CARRY, TILE, T_HILL, HILL_SIGHT, HILL_SPEED, REGION_KINDS, REGION_BONUS, type Cost, type Res } from './defs.ts';
+import { SETTLE, SETTLE_GATHER, SETTLE_HP, UNITS, BUILDINGS, AGE_COST, AGE_NAMES, GATHER_TICKS, FARM_TICKS, CARRY, TILE, T_HILL, HILL_SIGHT, HILL_SPEED, REGION_KINDS, REGION_BONUS, type Cost, type Res } from './defs.ts';
 
 const hillAt = (w: World, u: Unit) => w.terrain[((u.x / TILE) | 0) + ((u.y / TILE) | 0) * w.W] === T_HILL;
 import type { World, Player, Unit, Entity, Building } from './world.ts';
@@ -18,11 +18,11 @@ export const BRANCH: Record<Branch, { name: string; icon: string; cult: string; 
 export interface Mods {
   atk: number; atkPct: number; armor: number; hp: number; vilHp: number; speed: number; cavSpeed: number;
   gather: number; farm: number; mine: number; carry: number; research: number; bldHp: number;
-  housePop: number; tcPop: number; sight: number; range: number; siege: number; ageCost: number;
+  housePop: number; tcPop: number; sight: number; range: number; siege: number; ageCost: number; energy: number; // energy — % к выработке электростанций
 }
 export const baseMods = (): Mods => ({
   atk: 0, atkPct: 0, armor: 0, hp: 0, vilHp: 0, speed: 0, cavSpeed: 0, gather: 0, farm: 0, mine: 0, carry: 0,
-  research: 0, bldHp: 0, housePop: 0, tcPop: 0, sight: 0, range: 0, siege: 0, ageCost: 0,
+  research: 0, bldHp: 0, housePop: 0, tcPop: 0, sight: 0, range: 0, siege: 0, ageCost: 0, energy: 0,
 });
 export interface Stats { gathered: number; trained: number; kills: number; lost: number; built: number; }
 export const baseStats = (): Stats => ({ gathered: 0, trained: 0, kills: 0, lost: 0, built: 0 });
@@ -34,7 +34,7 @@ export const TECHS: Record<string, TechDef> = {
   drill:     { branch: 'mil', age: 0, name: 'Строевая подготовка',   desc: '+15% здоровья войск',     cost: { food: 150 },            time: 300, fx: { hp: 15 } },
   ironarms:  { branch: 'mil', age: 1, name: 'Железное оружие',       desc: '+2 к атаке войск',        cost: { food: 150, iron: 100 }, time: 400, fx: { atk: 2 } },
   stirrups:  { branch: 'mil', age: 1, name: 'Стремена',              desc: '+20% скорости конницы',   cost: { food: 200, wood: 100 }, time: 400, fx: { cavSpeed: 20 } },
-  plate:     { branch: 'mil', age: 2, name: 'Латы',                  desc: '+2 к броне войск',        cost: { food: 200, iron: 200 }, time: 500, fx: { armor: 2 } },
+  plate:     { branch: 'mil', age: 2, name: 'Латы',                  desc: '+2 к броне войск',        cost: { food: 200, iron: 150, gold: 100 }, time: 500, fx: { armor: 2 } },
   tools:     { branch: 'eco', age: 0, name: 'Каменные орудия',       desc: '+20% скорости добычи',    cost: { food: 100, wood: 50 },  time: 300, fx: { gather: 20 } },
   baskets:   { branch: 'eco', age: 0, name: 'Корзины',               desc: '+5 к переносимому',       cost: { wood: 100 },            time: 250, fx: { carry: 5 } },
   plough:    { branch: 'eco', age: 1, name: 'Плуг',                  desc: '+35% урожая ферм',        cost: { food: 150, wood: 150 }, time: 400, fx: { farm: 35 } },
@@ -43,19 +43,39 @@ export const TECHS: Record<string, TechDef> = {
   writing:   { branch: 'sci', age: 0, name: 'Письменность',          desc: '−25% времени исследований', cost: { food: 120 },          time: 250, fx: { research: 25 } },
   astronomy: { branch: 'sci', age: 1, name: 'Астрономия',            desc: '+2 к обзору',             cost: { food: 150, stone: 50 }, time: 350, fx: { sight: 2 } },
   geometry:  { branch: 'sci', age: 1, name: 'Геометрия',             desc: '+1 к дальности башен и центров', cost: { wood: 150, stone: 100 }, time: 400, fx: { range: 1 } },
-  engineering: { branch: 'sci', age: 2, name: 'Инженерия',           desc: '+50% урона по зданиям',   cost: { wood: 200, stone: 150 }, time: 500, fx: { siege: 50 } },
+  engineering: { branch: 'sci', age: 2, name: 'Инженерия',           desc: '+50% урона по зданиям',   cost: { wood: 200, stone: 150, gold: 75 }, time: 500, fx: { siege: 50 } },
   masonry:   { branch: 'civ', age: 0, name: 'Каменная кладка',       desc: '+30% прочности зданий',   cost: { stone: 100 },           time: 300, fx: { bldHp: 30 } },
   housing:   { branch: 'civ', age: 0, name: 'Общинные дома',         desc: '+3 жителя на дом',        cost: { wood: 120 },            time: 250, fx: { housePop: 3 } },
   roads:     { branch: 'civ', age: 1, name: 'Дороги',                desc: '+10% скорости всех юнитов', cost: { wood: 150, stone: 100 }, time: 400, fx: { speed: 10 } },
   calendar:  { branch: 'civ', age: 1, name: 'Календарь',             desc: '−20% цены следующей эпохи', cost: { food: 200 },          time: 300, fx: { ageCost: 20 } },
   law:       { branch: 'civ', age: 2, name: 'Свод законов',          desc: '+10 мест у центра, +50% здоровья жителей', cost: { food: 200, stone: 200 }, time: 500, fx: { tcPop: 10, vilHp: 50 } },
-  enlightenment: { branch: 'sci', age: 2, name: 'Просвещение', desc: 'Научная победа. Нужно 5 технологий; 3 минуты, центр должен уцелеть', cost: { food: 1000, stone: 400, iron: 400 }, time: 1800, fx: {}, final: true },
+  bayonets:  { branch: 'mil', age: 3, name: 'Штыки',                 desc: '+3 к атаке войск',        cost: { food: 300, iron: 200 }, time: 500, fx: { atk: 3 } },
+  banking:   { branch: 'eco', age: 3, name: 'Банки',                 desc: '+20% скорости добычи',    cost: { food: 300, gold: 200 }, time: 500, fx: { gather: 20 } },
+  printing:  { branch: 'sci', age: 3, name: 'Книгопечатание',        desc: '+3 к обзору, быстрее исследования', cost: { wood: 300, gold: 150 }, time: 500, fx: { sight: 3, research: 15 } },
+  bastions:  { branch: 'civ', age: 3, name: 'Бастионы',              desc: '+40% прочности зданий',   cost: { stone: 400 },           time: 500, fx: { bldHp: 40 } },
+  rifling:   { branch: 'mil', age: 4, name: 'Нарезные стволы',       desc: '+2 к дальности башен, +3 к атаке', cost: { iron: 400, gold: 200 }, time: 600, fx: { range: 2, atk: 3 } },
+  railways:  { branch: 'eco', age: 4, name: 'Железные дороги',       desc: '+15% скорости, +10 к переносимому', cost: { wood: 400, iron: 300 }, time: 600, fx: { speed: 15, carry: 10 } },
+  electricity: { branch: 'sci', age: 4, name: 'Электричество',       desc: '−25% времени исследований, +30% добычи камня и железа', cost: { gold: 400, energy: 50 }, time: 600, fx: { research: 25, mine: 30 } },
+  sanitation: { branch: 'civ', age: 4, name: 'Водопровод',           desc: '+4 жителя на дом, +50% здоровья жителей', cost: { stone: 300, iron: 200 }, time: 600, fx: { housePop: 4, vilHp: 50 } },
+  blitz:     { branch: 'mil', age: 5, name: 'Блицкриг',              desc: '+10% скорости, +10% урона', cost: { iron: 500, energy: 100 }, time: 700, fx: { speed: 10, atkPct: 10 } },
+  mechanization: { branch: 'eco', age: 5, name: 'Механизация',       desc: '+25% добычи, +35% урожая', cost: { wood: 500, energy: 100 }, time: 700, fx: { gather: 25, farm: 35 } },
+  radar:     { branch: 'sci', age: 5, name: 'Радар',                 desc: '+3 к обзору, +1 к дальности башен', cost: { gold: 400, energy: 150 }, time: 700, fx: { sight: 3, range: 1 } },
+  concrete:  { branch: 'civ', age: 5, name: 'Бетон',                 desc: '+50% прочности зданий',   cost: { stone: 600, energy: 50 }, time: 700, fx: { bldHp: 50 } },
+  composite: { branch: 'mil', age: 6, name: 'Композитная броня',    desc: '+3 к броне войск',        cost: { iron: 600, energy: 200 }, time: 800, fx: { armor: 3 } },
+  automation: { branch: 'eco', age: 6, name: 'Автоматизация',        desc: '+30% добычи, +10 к переносимому', cost: { gold: 500, energy: 200 }, time: 800, fx: { gather: 30, carry: 10 } },
+  satellites: { branch: 'sci', age: 6, name: 'Спутники',             desc: '+4 к обзору, +1 к дальности башен', cost: { gold: 600, energy: 300 }, time: 800, fx: { sight: 4, range: 1 } },
+  skyscrapers: { branch: 'civ', age: 6, name: 'Небоскрёбы',          desc: '+5 жителей на дом, +20 мест у центра', cost: { stone: 800, iron: 300 }, time: 800, fx: { housePop: 5, tcPop: 20 } },
+  plasma:    { branch: 'mil', age: 7, name: 'Плазменное оружие',     desc: '+20% урона войск',        cost: { gold: 800, energy: 400 }, time: 900, fx: { atkPct: 20 } },
+  fusion:    { branch: 'eco', age: 7, name: 'Термояд',               desc: 'Электростанции дают вдвое больше энергии', cost: { iron: 600, gold: 600 }, time: 900, fx: { energy: 100 } },
+  ai_core:   { branch: 'sci', age: 7, name: 'Искусственный интеллект', desc: '−30% времени исследований, +2 к обзору', cost: { gold: 800, energy: 500 }, time: 900, fx: { research: 30, sight: 2 } },
+  arcology:  { branch: 'civ', age: 7, name: 'Аркологии',             desc: '+5 жителей на дом, +50% прочности зданий', cost: { stone: 1000, energy: 300 }, time: 900, fx: { housePop: 5, bldHp: 50 } },
+  enlightenment: { branch: 'sci', age: 4, name: 'Просвещение', desc: 'Научная победа. Нужно 5 технологий; 3 минуты, центр должен уцелеть', cost: { food: 1000, stone: 400, iron: 400 }, time: 1800, fx: {}, final: true },
 };
 export const TECH_SLOTS = 3;           // исследований на эпоху: всё сразу не открыть
 const CULT_LEVELS = [15, 45, 100];     // очки культуры для уровней 1..3
 
 export const NAMES: Record<string, string> = {
-  villager: 'Житель', clubman: 'Дубинщик', spearman: 'Копейщик', archer: 'Лучник', swordsman: 'Мечник', horseman: 'Всадник', ram: 'Таран',
+  villager: 'Житель', clubman: 'Дубинщик', spearman: 'Копейщик', archer: 'Лучник', swordsman: 'Мечник', horseman: 'Всадник', musketeer: 'Мушкетёр', cuirassier: 'Кирасир', cannon: 'Пушка', rifleman: 'Стрелок', machinegunner: 'Пулемётчик', artillery: 'Артиллерия', power_plant: 'Электростанция', tank: 'Танк', bazooka: 'Гранатомётчик', aa_gun: 'Зенитка', fighter: 'Истребитель', bomber: 'Бомбардировщик', factory: 'Завод', airfield: 'Аэродром', marine: 'Мотострелок', apc: 'БТР', mlrs: 'РСЗО', sam: 'ЗРК', jet: 'Реактивный истребитель', helicopter: 'Боевой вертолёт', laser_trooper: 'Лазерный пехотинец', drone: 'Боевой дрон', mech: 'Боевой мех', railgun: 'Рельсотрон', drone_hub: 'Центр дронов', trader: 'Торговая повозка', market: 'Рынок', hunter: 'Охотник', scout: 'Разведчик', legionary: 'Легионер', crossbowman: 'Арбалетчик', knight: 'Рыцарь', ram: 'Таран',
   town_center: 'Центр', house: 'Дом', farm: 'Поле пшеницы', camp: 'Лагерь', barracks: 'Казармы', archery: 'Стрельбище', tower: 'Башня', stable: 'Конюшня', workshop: 'Мастерская', wall: 'Стена', gate: 'Ворота', pasture: 'Ферма', cow: 'Корова',
 };
 
@@ -78,6 +98,7 @@ export function recalc(P: Player) {
   m.gather += 7 * cultureLevel(P, 'eco');
   m.research = Math.min(60, m.research + 10 * cultureLevel(P, 'sci'));
   m.bldHp += 10 * cultureLevel(P, 'civ');
+  m.gather += SETTLE_GATHER * P.settle; m.bldHp += SETTLE_HP * P.settle; // рост поселения
   P.mods = m;
 }
 
@@ -97,7 +118,7 @@ export const sightOf = (w: World, u: Unit) => (UNITS[u.type].sight + w.players[u
 export const carryOf = (w: World, u: Unit) => CARRY + w.players[u.owner].mods.carry;
 export function gatherTicks(w: World, p: number, r: Res | 'farm', tile = -1) {
   const m = w.players[p].mods, reg = tile >= 0 ? w.regions[w.region[tile]] : null;
-  let bonus = m.gather + (r === 'farm' ? m.farm : r === 'stone' || r === 'iron' ? m.mine : 0);
+  let bonus = m.gather + (r === 'farm' ? m.farm : r === 'stone' || r === 'iron' || r === 'gold' ? m.mine : 0);
   if (reg && reg.owner === p && REGION_KINDS[reg.kind].res === (r === 'farm' ? 'food' : r)) bonus += REGION_BONUS; // бонус своего региона
   let t = Math.floor(((r === 'farm' ? FARM_TICKS : GATHER_TICKS) * 100) / (100 + bonus));
   const P = w.players[p];
@@ -151,6 +172,7 @@ export function onGathered(w: World, P: Player, r: Res, n: number) {
   P.econAcc += n;
   while (P.econAcc >= 100) { P.econAcc -= 100; addCulture(w, P, 'eco', 1); }
   if (r === 'iron') once(w, P, 'iron', 'Найдено железо');
+  if (r === 'gold') once(w, P, 'gold', 'Добыто первое золото');
   if (r === 'stone') once(w, P, 'stone', 'Начата добыча камня');
 }
 export function onBuilt(w: World, b: Building) {
@@ -178,6 +200,18 @@ export function onRemoved(w: World, e: Entity) {
 export function onWar(w: World, a: number, b: number) {
   once(w, w.players[a], 'war' + b, `Началась война с P${b}`);
   once(w, w.players[b], 'war' + a, `P${a} напал на нас`);
+}
+// Рост поселения: только вверх, по одному уровню за проверку; событие — в хронику
+export function updSettle(w: World, P: Player) {
+  const next = SETTLE[P.settle + 1];
+  if (!next || P.pop < next.pop || P.age < next.age) return;
+  let n = 0;
+  for (const e of w.ents.values()) if (e.kind === 'b' && e.owner === P.id && e.type !== 'wall' && e.type !== 'gate' && e.progress >= BUILDINGS[e.type].time) n++;
+  if (n < next.blds) return;
+  P.settle++;
+  recalc(P);
+  chron(w, P.id, `${SETTLE[P.settle - 1].name} ${SETTLE[P.settle - 1].grew} в ${next.into}`);
+  addCulture(w, P, 'civ', 5);
 }
 export function onPop(w: World, P: Player) {
   for (const m of [20, 40, 60, 100]) if (P.pop >= m) once(w, P, 'pop' + m, `Население достигло ${m}`);

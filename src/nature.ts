@@ -1,7 +1,6 @@
-// Природа «под фото»: простая геометрия + настоящие фототекстуры (кора, камень с картами нормалей)
-// и полупрозрачные «карточки» листвы. Фотосканы деревьев весят сотни тысяч полигонов — лес из них браузер не потянет,
-// поэтому делаем как в играх: мало полигонов, реализм — за счёт текстур.
-import { Mesh, MeshBuilder, VertexData, StandardMaterial, Color3, DynamicTexture, FresnelParameters, type Scene, type Texture } from '@babylonjs/core';
+// Природа в стиле моделей KayKit: low-poly формы, цвет в вершинах (градиент снизу вверх), без фототекстур.
+// Листва травы, папоротника и пшеницы — «карточки» с нарисованной в канвасе текстурой.
+import { Mesh, MeshBuilder, VertexData, StandardMaterial, Color3, DynamicTexture, FresnelParameters, type Scene } from '@babylonjs/core';
 import { CustomMaterial } from '@babylonjs/materials';
 
 let windT = 0;
@@ -109,16 +108,8 @@ function rock(scene: Scene, name: string, variant: number) {
   return m;
 }
 
-export function makeNature(scene: Scene, tex: Record<string, Texture | undefined>) {
+export function makeNature(scene: Scene) {
   seed = 12345;
-  const mat = (name: string, diff: Texture | undefined, nor: Texture | undefined, col: Color3, us = 1, vs = 1) => {
-    const m = new StandardMaterial(name, scene);
-    m.diffuseColor = col;
-    m.specularColor = new Color3(0.06, 0.06, 0.06);
-    if (diff) { const d = diff.clone(); d.uScale = us; d.vScale = vs; m.diffuseTexture = d; }
-    if (nor) { const n = nor.clone(); n.uScale = us; n.vScale = vs; m.bumpTexture = n; }
-    return m;
-  };
   const leafMat = (name: string, t: DynamicTexture, tintc: Color3, amp = 0.04) => {
     const m = new CustomMaterial(name, scene);
     // Ветер: смещаем вершины в шейдере — чем выше над землёй, тем сильнее; порывы разные в разных местах карты
@@ -206,9 +197,18 @@ export function makeNature(scene: Scene, tex: Record<string, Texture | undefined
 
   // Лиственное: ствол + крона из нескольких «пузырей»
   const oakT = trunk('oakT', 0.9, 0.17, 0.1);
-  const oakL = paint(merge([blob(0.5, 0, 1.15, 0), blob(0.36, 0.3, 1.0, 0.12), blob(0.38, -0.28, 1.05, -0.12), blob(0.32, 0.05, 1.5, 0.05), blob(0.3, 0.1, 1.1, -0.35)], 'oakL'),
-    C(0.12, 0.3, 0.09), C(0.55, 0.78, 0.26), 0.65, 1.8, 0.07);
-  oakL.material = styl('oakL', 0.03);
+  const crown = (name: string, lo: Color3, hi: Color3, k = 1) => {
+    const m = paint(merge([blob(0.5 * k, 0, 1.15, 0), blob(0.36 * k, 0.3 * k, 1.0, 0.12 * k), blob(0.38 * k, -0.28 * k, 1.05, -0.12 * k), blob(0.32 * k, 0.05, 1.15 + 0.35 * k, 0.05), blob(0.3 * k, 0.1 * k, 1.1, -0.35 * k)], name), lo, hi, 0.65, 1.8, 0.07);
+    m.material = styl(name, 0.03);
+    return m;
+  };
+  const oakL = crown('oakL', C(0.12, 0.3, 0.09), C(0.5, 0.72, 0.24));
+  // Осенние кроны и берёза — пёстрый лес, как в War Selection / AoE III
+  const oakY = crown('oakY', C(0.38, 0.3, 0.06), C(0.93, 0.76, 0.22));
+  const oakO = crown('oakO', C(0.4, 0.14, 0.05), C(0.92, 0.48, 0.16));
+  const birchT = trunk('birchT', 1.1, 0.11, 0.06);
+  paint(birchT, C(0.55, 0.53, 0.48), C(0.93, 0.92, 0.88), 0, 1.1, 0.12);
+  const birchL = crown('birchL', C(0.25, 0.42, 0.12), C(0.66, 0.82, 0.32), 0.8);
 
   // Ягодный куст: пухлые шарики листвы + ягоды
   const bush = paint(merge([blob(0.22, 0, 0.2, 0), blob(0.17, 0.16, 0.16, 0.06), blob(0.16, -0.14, 0.17, -0.07), blob(0.15, 0.02, 0.33, 0.02)], 'bush'), C(0.1, 0.3, 0.1), C(0.42, 0.68, 0.22), 0, 0.45, 0.06);
@@ -274,7 +274,7 @@ export function makeNature(scene: Scene, tex: Record<string, Texture | undefined
   const out: Record<string, Mesh> = {
     ...props,
     wheat, soil,
-    pineT, pineL, oakT, oakL, bush, berry,
+    pineT, pineL, oakT, oakL, oakY, oakO, birchT, birchL, bush, berry,
     grassA: patch('grassA', 'blades'), grassB: patch('grassB', 'bladesY'), grassC: patch('grassC', 'bladesDry'), grassD: patch('grassD', 'bladesFl'),
   };
   // Камни: гранёные глыбы с «рисованным» градиентом (светлый верх); руда — с ржаво-медным оттенком
@@ -283,6 +283,7 @@ export function makeNature(scene: Scene, tex: Record<string, Texture | undefined
   for (let v = 0; v < 3; v++) {
     const r = rock(scene, 'rock' + v, v); r.convertToFlatShadedMesh(); paint(r, C(0.36, 0.35, 0.34), C(0.78, 0.76, 0.72), 0, 0.5, 0.08); r.material = stoneM; out['rock' + v] = r;
     const o = rock(scene, 'ore' + v, v + 3); o.convertToFlatShadedMesh(); paint(o, C(0.3, 0.19, 0.15), C(0.78, 0.5, 0.33), 0, 0.5, 0.1); o.material = oreM; out['ore' + v] = o;
+    const g = rock(scene, 'gold' + v, v + 6); g.convertToFlatShadedMesh(); paint(g, C(0.45, 0.36, 0.12), C(0.98, 0.82, 0.3), 0, 0.5, 0.1); g.material = oreM; out['gold' + v] = g; // золотая жила
   }
   for (const m of Object.values(out)) m.isPickable = false;
   return out;

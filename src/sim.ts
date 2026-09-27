@@ -1,11 +1,11 @@
-import { UNITS, BUILDINGS, RES, TILE, AGE_COST, AGE_TIME, AGE_NAMES, GATHER_TICKS, FARM_TICKS, CARRY, POP_MAX, QUEUE_MAX, MEAT, FIELD_REACH, WHEAT, WHEAT_INIT, WHEAT_SOW, WHEAT_TIME, WHEAT_COST, T_HILL, HILL_BONUS, COVER_BONUS, REGION_WEIGHT, TERR_SHARE, TERR_HOLD, ECO_TARGET, CULT_TARGET, FINAL_REQ, GOAL_HOLD, WIN_NAMES, EVENT_MIN, EVENT_VAR, type Cost, type Res, type Cls } from './defs.ts';
+import { UNITS, BUILDINGS, RES, TILE, AGE_COST, AGE_TIME, AGE_NAMES, GATHER_TICKS, FARM_TICKS, CARRY, POP_MAX, QUEUE_MAX, MEAT, FIELD_REACH, WHEAT, WHEAT_INIT, WHEAT_SOW, WHEAT_TIME, WHEAT_COST, T_HILL, HILL_BONUS, COVER_BONUS, REGION_WEIGHT, TERR_SHARE, TERR_HOLD, ECO_TARGET, CULT_TARGET, FINAL_REQ, GOAL_HOLD, WIN_NAMES, EVENT_MIN, EVENT_VAR, ENERGY_RATE, DRONE_CAP, MARKET_MAX, MARKET_MIN, MARKET_STEP, MARKET_FEE, MARKET_BASE, TRADE_MIN, TRADE_K, type Cost, type Res, type Cls, type UnitDef } from './defs.ts';
 import { ally, type World, type Unit, type Building, type Entity, type Order, type Fx, type Player, type Goal, addBuilding, spawnUnit, canPlace, walkable, passable, rectDist, distTo } from './world.ts';
 import { findPath, smoothPath } from './path.ts';
-import { TECHS, maxHp, speedOf, sightOf, carryOf, gatherTicks, researchTime, ageCost, popOf, slotsLeft, queuedTechs, research, onAge, onGathered, onBuilt, onTrained, onRemoved, onWar, onPop, chron, addCulture, cultureLevel, BRANCHES } from './civ.ts';
+import { TECHS, maxHp, speedOf, sightOf, carryOf, gatherTicks, researchTime, ageCost, popOf, slotsLeft, queuedTechs, research, onAge, onGathered, onBuilt, onTrained, onRemoved, onWar, onPop, updSettle, chron, addCulture, cultureLevel, BRANCHES } from './civ.ts';
 
 // Команды — единственный способ влиять на мир. По сети передаются только они.
 export type Command = { p: number; q?: boolean } & ( // q — добавить в очередь приказов (Shift)
-  | { t: 'move'; units: number[]; x: number; y: number }
+  | { t: 'move'; units: number[]; x: number; y: number; f?: number } // f — формация: 0 квадрат, 1 линия, 2 клин, 3 черепаха
   | { t: 'attack'; units: number[]; target: number }
   | { t: 'gather'; units: number[]; tile: number }
   | { t: 'build'; units: number[]; type: string; tx: number; ty: number }
@@ -14,7 +14,7 @@ export type Command = { p: number; q?: boolean } & ( // q — добавить �
   | { t: 'train'; building: number; unit: string }
   | { t: 'age'; building: number }
   | { t: 'stop'; units: number[] }
-  | { t: 'amove'; units: number[]; x: number; y: number }
+  | { t: 'amove'; units: number[]; x: number; y: number; f?: number }
   | { t: 'rally'; building: number; x: number; y: number }
   | { t: 'research'; building: number; tech: string }
   | { t: 'wall'; units: number[]; tiles: number[] }
@@ -23,6 +23,9 @@ export type Command = { p: number; q?: boolean } & ( // q — добавить �
   | { t: 'convert'; building: number; to: string }
   | { t: 'gate'; building: number; open: boolean }
   | { t: 'sow'; building: number }
+  | { t: 'trade'; building: number; res: string; buy: boolean } // рынок: купить/продать 100 ресурса за золото
+  | { t: 'route'; units: number[]; target: number }            // повозки: торговать со своим/союзным рынком
+  | { t: 'cheat' } // только при w.debug (одиночная игра); сервер такую команду не пропускает
 );
 
 type Gather = Extract<Order, { t: 'gather' }>;
@@ -61,7 +64,13 @@ export function applyCommand(w: World, c: Command) {
   switch (c.t) {
     case 'move':
     case 'amove': {
-      const us = mine(w, c.p, c.units), s = Math.ceil(Math.sqrt(us.length));
+      const us = mine(w, c.p, c.units);
+      if (c.f && us.length > 1) { // строй: места по формации, отряд идёт шагом самого медленного
+        const slots = formation(w, us, c.x, c.y, c.f), sp = Math.min(...us.map((u) => speedOf(w, u)));
+        for (const [u, x, y] of slots) give(u, { t: c.t, x: Math.min(w.W - 1, Math.max(0, x)), y: Math.min(w.H - 1, Math.max(0, y)), sp });
+        break;
+      }
+      const s = Math.ceil(Math.sqrt(us.length));
       us.forEach((u, k) => give(u, { t: c.t,
         x: Math.min(w.W - 1, Math.max(0, c.x + (k % s) - (s >> 1))),
         y: Math.min(w.H - 1, Math.max(0, c.y + Math.floor(k / s) - (s >> 1))) }));
@@ -69,7 +78,7 @@ export function applyCommand(w: World, c: Command) {
     }
     case 'attack': {
       const t = w.ents.get(c.target);
-      if (t && (!ally(w, t.owner, c.p) || isAnimal(t))) for (const u of mine(w, c.p, c.units)) give(u, { t: 'attack', target: c.target }); // своих коров тоже можно забить
+      if (t && (!ally(w, t.owner, c.p) || isAnimal(t))) for (const u of mine(w, c.p, c.units)) if (canHit(UNITS[u.type], t)) give(u, { t: 'attack', target: c.target }); // своих коров тоже можно забить
       break;
     }
     case 'gather':
@@ -97,6 +106,7 @@ export function applyCommand(w: World, c: Command) {
     case 'train': {
       const b = ownBuilding(w, c.p, c.building), ud = UNITS[c.unit];
       if (!b || !ud || !BUILDINGS[b.type].trains?.includes(c.unit) || ud.age > P.age || b.queue.length >= QUEUE_MAX || !afford(w, c.p, ud.cost)) return;
+      if (ud.noPop && droneCount(w, c.p) >= DRONE_CAP * [...w.ents.values()].filter((e) => e.kind === 'b' && e.owner === c.p && e.type === 'drone_hub' && done(e)).length) return; // лимит дронов
       pay(w, c.p, ud.cost);
       b.queue.push(c.unit);
       break;
@@ -177,8 +187,86 @@ export function applyCommand(w: World, c: Command) {
     case 'stop':
       for (const u of mine(w, c.p, c.units)) { u.oq = []; setOrder(u, idle()); }
       break;
+    case 'trade': { // обмен на рынке: 100 единиц ресурса ↔ золото по текущей цене
+      const b = ownBuilding(w, c.p, c.building), price = P.prices[c.res as Res];
+      if (!b || b.type !== 'market' || price === undefined) return;
+      const r = c.res as Res;
+      if (c.buy) {
+        if (P.res.gold < price) return;
+        P.res.gold -= price; P.res[r] += 100; P.prices[r] = Math.min(MARKET_MAX, price + MARKET_STEP);
+      } else {
+        if (P.res[r] < 100) return;
+        P.res[r] -= 100; P.res.gold += Math.floor((price * (100 - MARKET_FEE)) / 100); P.prices[r] = Math.max(MARKET_MIN, price - MARKET_STEP);
+      }
+      break;
+    }
+    case 'route': { // торговый путь: от ближайшего своего рынка к указанному (свой или союзный, не ближе TRADE_MIN клеток)
+      const dest = w.ents.get(c.target);
+      if (!dest || dest.kind !== 'b' || dest.type !== 'market' || !done(dest) || !ally(w, dest.owner, c.p)) return;
+      for (const u of mine(w, c.p, c.units)) {
+        if (UNITS[u.type].cls !== 'trade') continue;
+        let home: Building | null = null, bd = Infinity;
+        for (const e of w.ents.values()) if (e.kind === 'b' && e.type === 'market' && e.owner === c.p && e.id !== dest.id && done(e)) {
+          const d = distTo(u.x, u.y, e);
+          if (d < bd) { bd = d; home = e; }
+        }
+        if (home && marketDist(home, dest) >= TRADE_MIN) give(u, { t: 'trade', home: home.id, dest: dest.id, leg: 0 });
+      }
+      break;
+    }
+    case 'cheat':
+      if (w.debug) for (const r of RES) P.res[r] += 1000;
+      break;
   }
 }
+
+// ---------- Формации (только целые числа — детерминизм) ----------
+// Направление строя — от центра отряда к цели, округлённое до 8 сторон. Рукопашные — вперёд/по краю, стрелки — назад/внутрь
+const ROLE: Partial<Record<Cls, number>> = { infantry: 0, spear: 0, cavalry: 0, ranged: 1, siege: 2, worker: 2 };
+function formation(w: World, us: Unit[], tx: number, ty: number, f: number): [Unit, number, number][] {
+  const n = us.length;
+  let sx = 0, sy = 0;
+  for (const u of us) { sx += u.x; sy += u.y; }
+  const DX = tx - Math.floor(sx / n / TILE), DY = ty - Math.floor(sy / n / TILE), ax = Math.abs(DX), ay = Math.abs(DY);
+  let fx = Math.sign(DX), fy = Math.sign(DY);
+  if (ax > 2 * ay) fy = 0; else if (ay > 2 * ax) fx = 0;
+  if (!fx && !fy) fy = 1;
+  const rx = -fy, ry = fx; // вправо от направления
+  const sorted = [...us].sort((a, b) => (ROLE[UNITS[a.type].cls] ?? 0) - (ROLE[UNITS[b.type].cls] ?? 0) || a.id - b.id);
+  const off: [number, number][] = []; // [вбок, назад]
+  if (f === 1) { // линия: 1–3 шеренги, фронт широкий
+    const ranks = n <= 8 ? 1 : n <= 24 ? 2 : 3, per = Math.ceil(n / ranks);
+    for (let k = 0; k < n; k++) off.push([(k % per) - ((per - 1) >> 1), Math.floor(k / per)]);
+  } else if (f === 2) { // клин: остриём к цели, ряд k — 2k+1 мест, от центра к краям
+    for (let k = 0; off.length < n; k++) for (let j = 0; j <= 2 * k && off.length < n; j++) off.push([j % 2 ? (j + 1) >> 1 : -(j >> 1), k]);
+  } else { // черепаха: плотный квадрат, края — рукопашным, середина — стрелкам
+    const s = Math.ceil(Math.sqrt(n)), h = (s - 1) >> 1, cells: [number, number, number][] = [];
+    for (let j = 0; j < s; j++) for (let i = 0; i < s; i++) cells.push([i - h, j - h, Math.min(i, j, s - 1 - i, s - 1 - j)]);
+    cells.sort((a, b) => a[2] - b[2] || a[1] - b[1] || a[0] - b[0]);
+    for (let k = 0; k < n; k++) off.push([cells[k][0], cells[k][1]]);
+  }
+  const used = new Set<number>(), out: [Unit, number, number][] = [];
+  sorted.forEach((u, k) => {
+    let x = tx + off[k][0] * rx - off[k][1] * fx, y = ty + off[k][0] * ry - off[k][1] * fy;
+    if (x < 0 || y < 0 || x >= w.W || y >= w.H || !walkable(w, x + y * w.W) || used.has(x + y * w.W)) { // место занято препятствием — ближайшее свободное
+      search: for (let r = 1; r <= 6; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+        const nx = x + dx, ny = y + dy, i = nx + ny * w.W;
+        if (nx >= 0 && ny >= 0 && nx < w.W && ny < w.H && walkable(w, i) && !used.has(i)) { x = nx; y = ny; break search; }
+      }
+    }
+    used.add(x + y * w.W);
+    out.push([u, x, y]);
+  });
+  return out;
+}
+
+function droneCount(w: World, p: number) { // дроны в строю + в очередях
+  let n = 0;
+  for (const e of w.ents.values()) if (e.owner === p) { if (e.kind === 'u') { if (UNITS[e.type].noPop) n++; } else for (const q of e.queue) if (UNITS[q]?.noPop) n++; }
+  return n;
+}
+const marketDist = (a: Building, b: Building) => { const dx = a.tx - b.tx, dy = a.ty - b.ty; return Math.floor(Math.sqrt(dx * dx + dy * dy)); };
 
 function refundItem(P: Player, q: string) {
   const cost = q === '#wheat' ? WHEAT_COST : q === '#age' ? ageCost(P) : q[0] === '@' ? TECHS[q.slice(1)]?.cost : UNITS[q]?.cost;
@@ -277,7 +365,8 @@ function stepPath(w: World, u: Unit) {
   if (arrived) u.path.shift();
 }
 function approach(w: World, u: Unit, px: number, py: number): boolean {
-  const dx = px - u.x, dy = py - u.y, dist = Math.floor(Math.sqrt(dx * dx + dy * dy)), sp = speedOf(w, u);
+  const o = u.order, cap = (o.t === 'move' || o.t === 'amove') && o.sp ? o.sp : Infinity; // строй держит общий шаг
+  const dx = px - u.x, dy = py - u.y, dist = Math.floor(Math.sqrt(dx * dx + dy * dy)), sp = Math.min(speedOf(w, u), cap);
   if (dist <= sp) { u.x = px; u.y = py; return true; }
   u.x += Math.trunc((dx * sp) / dist); u.y += Math.trunc((dy * sp) / dist);
   return false;
@@ -285,6 +374,12 @@ function approach(w: World, u: Unit, px: number, py: number): boolean {
 
 // true = уже на месте (вплотную к прямоугольнику, либо точно в клетке при exact)
 function moveTo(w: World, u: Unit, rx: number, ry: number, rw: number, rh: number, exact = false): boolean {
+  if (UNITS[u.type].air) { // авиация летит по прямой — над водой, горами и стенами
+    const t = tileOf(w, u), d = rectDist(w, t, rx, ry, rw, rh);
+    if (exact ? t === rx + ry * w.W : d <= 1) return true;
+    approach(w, u, rx * TILE + (rw * TILE) / 2, ry * TILE + (rh * TILE) / 2);
+    return false;
+  }
   const t = tileOf(w, u), goal = rx + ry * w.W, d = rectDist(w, t, rx, ry, rw, rh);
   if (exact ? t === goal || (d <= 1 && !walkable(w, goal)) : d <= 1) { u.path.length = 0; return true; }
   const key = (rx * 4096 + ry) * 64 + rw * 8 + rh;
@@ -302,10 +397,18 @@ function moveTo(w: World, u: Unit, rx: number, ry: number, rw: number, rh: numbe
 }
 
 // ---------- Поиск ----------
-function nearestEnemy(w: World, owner: number, x: number, y: number, range: number, unitsOnly = false): Entity | null {
+// Авиацию бьют только стрелки (range > 2000), башни/центры и зенитки; зенитка бьёт только авиацию. by — атакующий юнит (нет — здание)
+const isAir = (e: Entity) => e.kind === 'u' && !!UNITS[e.type].air;
+export function canHit(by: UnitDef | undefined, t: Entity) {
+  if (!by) return true;
+  const air = isAir(t);
+  if (by.airOnly && !air) return false;
+  return !air || (by.hitsAir ?? by.range > 2000);
+}
+function nearestEnemy(w: World, owner: number, x: number, y: number, range: number, unitsOnly = false, by?: UnitDef): Entity | null {
   let best: Entity | null = null, bd = Infinity;
   for (const e of w.ents.values()) {
-    if (ally(w, e.owner, owner) || e.hp <= 0 || (unitsOnly && e.kind === 'b') || isAnimal(e)) continue;
+    if (ally(w, e.owner, owner) || e.hp <= 0 || (unitsOnly && e.kind === 'b') || isAnimal(e) || !canHit(by, e)) continue;
     const d = distTo(x, y, e);
     if (d > range) continue;
     const score = d + (e.kind === 'b' ? 3 * TILE : 0); // юниты приоритетнее зданий
@@ -347,10 +450,10 @@ function inCover(w: World, u: Unit) { // рядом ≥2 деревьев — с
   return n >= 2;
 }
 
-function hit(w: World, src: { atk?: number; bonus?: Partial<Record<Cls, number>> }, t: Entity, by: number, military: boolean, ax: number, ay: number, ranged: boolean) {
+function hit(w: World, src: { atk?: number; bonus?: Partial<Record<Cls, number>>; pierce?: boolean }, t: Entity, by: number, military: boolean, ax: number, ay: number, ranged: boolean) {
   const m = w.players[by].mods, tm = w.players[t.owner].mods;
   const cls: Cls = t.kind === 'u' ? UNITS[t.type].cls : 'building';
-  const armor = t.kind === 'u' ? UNITS[t.type].armor + (cls !== 'worker' ? tm.armor : 0) : BUILDINGS[t.type].armor;
+  const armor = src.pierce ? 0 : t.kind === 'u' ? UNITS[t.type].armor + (cls !== 'worker' ? tm.armor : 0) : BUILDINGS[t.type].armor; // энергетическое оружие броню не замечает
   const mult = (src.bonus?.[cls] ?? 100) + (cls === 'building' ? m.siege : 0);
   const atk = (src.atk ?? 0) + (military ? m.atk : 0);
   let pct = 100 + (military ? m.atkPct : 0);
@@ -440,7 +543,7 @@ function farm(w: World, u: Unit, o: Farm) {
 // Мягкое расталкивание юнитов (сетка по клеткам, порядок по id — детерминированно)
 function separate(w: World) {
   const R2 = 480, grid = new Map<number, Unit[]>();
-  for (const e of w.ents.values()) if (e.kind === 'u') {
+  for (const e of w.ents.values()) if (e.kind === 'u' && !UNITS[e.type].air) { // самолёты друг друга не расталкивают
     const k = tileOf(w, e); let a = grid.get(k);
     if (!a) grid.set(k, (a = []));
     a.push(e);
@@ -450,7 +553,7 @@ function separate(w: World) {
     if (nx > 0 && ny > 0 && nx < w.W * TILE && ny < w.H * TILE && (walkable(w, t) || t === tileOf(w, u))) { u.x = nx; u.y = ny; }
   };
   for (const e of w.ents.values()) {
-    if (e.kind !== 'u') continue;
+    if (e.kind !== 'u' || UNITS[e.type].air) continue;
     const tx = (e.x / TILE) | 0, ty = (e.y / TILE) | 0;
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
       for (const o of grid.get(tx + dx + (ty + dy) * w.W) ?? []) {
@@ -521,14 +624,21 @@ function attack(w: World, u: Unit, o: Attack) {
     if (ct !== undefined && w.resType[ct]) return setOrder(u, { t: 'gather', tile: ct, back: false });
   }
   if (t && t.hp <= 0 && isAnimal(t)) return; // туша появится в конце тика
+  if (t && !canHit(d, t)) t = undefined; // эту цель нам не достать (самолёт для мечника, пехота для зенитки)
   if (!t || t.hp <= 0) {
-    const e = nearestEnemy(w, u.owner, u.x, u.y, sightOf(w, u));
+    const e = nearestEnemy(w, u.owner, u.x, u.y, sightOf(w, u), false, UNITS[u.type]);
     if (!e) return setOrder(u, o.ax !== undefined ? { t: 'amove', x: o.ax, y: o.ay! } : idle());
     o.target = e.id; t = e;
   }
   if (distTo(u.x, u.y, t) <= d.range) {
     u.path.length = 0;
-    if (!u.cd) { hit(w, d, t, u.owner, d.cls !== 'worker', u.x, u.y, d.range > 2000); u.cd = d.cd; }
+    if (!u.cd) {
+      hit(w, d, t, u.owner, d.cls !== 'worker', u.x, u.y, d.range > 2000); u.cd = d.cd;
+      if (d.splash) { // залп по площади: остальные враги рядом с целью — половина удара
+        const [cx, cy] = t.kind === 'u' ? [t.x, t.y] : [t.tx * TILE + TILE / 2, t.ty * TILE + TILE / 2], half = { atk: d.atk >> 1, bonus: d.bonus };
+        for (const e of w.ents.values()) if (e !== t && e.hp > 0 && !ally(w, e.owner, u.owner) && !isAnimal(e) && canHit(d, e) && distTo(cx, cy, e) <= d.splash) hit(w, half, e, u.owner, true, u.x, u.y, false);
+      }
+    }
     return;
   }
   if (t.kind === 'u') {
@@ -541,6 +651,22 @@ function updUnit(w: World, u: Unit) {
   const d = UNITS[u.type], o = u.order;
   if (u.cd > 0) u.cd--;
   switch (o.t) {
+    case 'trade': { // рейс: до чужого рынка → с золотом домой → снова
+      const home = w.ents.get(o.home), dest = w.ents.get(o.dest);
+      if (!home || !dest || home.kind !== 'b' || dest.kind !== 'b' || home.hp <= 0 || dest.hp <= 0) { setOrder(u, idle()); break; }
+      const t = o.leg ? home : dest, s = size(t);
+      if (!moveTo(w, u, t.tx, t.ty, s, s)) break;
+      if (!o.leg) { // у чужого рынка: грузим золото — его ещё надо довезти
+        const g = Math.floor((marketDist(home, dest) ** 2) / TRADE_K);
+        u.carry = dest.owner !== u.owner ? Math.floor((g * 3) / 2) : g; u.carryRes = 'gold'; o.leg = 1;
+      } else {
+        const P = w.players[u.owner];
+        if (u.carry) { P.res.gold += u.carry; P.stats.gathered += u.carry; onGathered(w, P, 'gold', u.carry); }
+        u.carry = 0; u.carryRes = null; o.leg = 0;
+      }
+      u.path = []; u.pkey = -1;
+      break;
+    }
     case 'idle':
       if (u.oq.length) { setOrder(u, u.oq.shift()!); break; } // следующий приказ из очереди
       if (d.animal) { // скот бродит у своего загона
@@ -555,14 +681,16 @@ function updUnit(w: World, u: Unit) {
         break;
       }
       if (d.cls !== 'worker' && (w.tick + u.id) % 5 === 0) { // автоагрессия
-        const e = nearestEnemy(w, u.owner, u.x, u.y, sightOf(w, u));
+        const e = nearestEnemy(w, u.owner, u.x, u.y, sightOf(w, u), false, UNITS[u.type]);
         if (e) setOrder(u, { t: 'attack', target: e.id });
       }
       break;
-    case 'move': if (moveTo(w, u, o.x, o.y, 1, 1, true)) setOrder(u, idle()); break;
+    case 'move': // дошли до клетки — встаём в её центр: так строй держит форму и соседи не расталкивают друг друга
+      if (moveTo(w, u, o.x, o.y, 1, 1, true) && (tileOf(w, u) !== o.x + o.y * w.W || approach(w, u, o.x * TILE + TILE / 2, o.y * TILE + TILE / 2))) setOrder(u, idle());
+      break;
     case 'amove': // идём, но бьём всех встречных, потом продолжаем путь
       if ((w.tick + u.id) % 5 === 0) {
-        const e = nearestEnemy(w, u.owner, u.x, u.y, sightOf(w, u));
+        const e = nearestEnemy(w, u.owner, u.x, u.y, sightOf(w, u), false, UNITS[u.type]);
         if (e) { setOrder(u, { t: 'attack', target: e.id, ax: o.x, ay: o.y }); break; }
       }
       if (moveTo(w, u, o.x, o.y, 1, 1, true)) setOrder(u, idle());
@@ -605,7 +733,7 @@ function updBuilding(w: World, b: Building) {
     return;
   }
   if (b.qt < UNITS[q].time) { b.qt++; return; }
-  if (!UNITS[q].animal && P.pop >= P.popCap) return; // ждём жильё (скот места не занимает)
+  if (!UNITS[q].animal && !UNITS[q].noPop && P.pop >= P.popCap) return; // ждём жильё (скот и дроны места не занимают)
   const u = spawnUnit(w, q, b.owner, b, b.rally);
   if (!u) return;
   b.queue.shift(); b.qt = 0; u.hp = maxHp(w, u); fx(w, 'spawn', u); onTrained(w, P, u);
@@ -622,7 +750,7 @@ function remove(w: World, e: Entity) {
   fx(w, 'die', e);
   onRemoved(w, e);
   const P = w.players[e.owner];
-  if (e.kind === 'u') { if (UNITS[e.type].animal) carcass(w, e); else P.pop--; return; }
+  if (e.kind === 'u') { if (UNITS[e.type].animal) carcass(w, e); else if (!UNITS[e.type].noPop) P.pop--; return; }
   const s = size(e);
   for (let y = e.ty; y < e.ty + s; y++) for (let x = e.tx; x < e.tx + s; x++) w.occ[x + y * w.W] = 0;
   if (e.queue.includes('#age')) P.ageing = false;
@@ -689,7 +817,7 @@ function randomEvent(w: World) {
       const r = w.rng.int(2) ? 'iron' : 'stone', ri = RES.indexOf(r) + 1;
       for (let tries = 0; tries < 60; tries++) {
         const x = 3 + w.rng.int(w.W - 6), y = 3 + w.rng.int(w.H - 6);
-        if (!walkable(w, x + y * w.W) || [...w.ents.values()].some((e) => e.kind === 'b' && e.type === 'town_center' && Math.hypot(e.tx - x, e.ty - y) < 12)) continue;
+        if (!walkable(w, x + y * w.W) || [...w.ents.values()].some((e) => e.kind === 'b' && e.type === 'town_center' && (e.tx - x) ** 2 + (e.ty - y) ** 2 < 144)) continue;
         for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
           const i = x + dx + (y + dy) * w.W;
           if (walkable(w, i)) { w.resType[i] = ri; w.resAmt[i] = 300; }
@@ -760,7 +888,12 @@ export function step(w: World, cmds: Command[]) {
   for (const e of w.ents.values()) if (e.kind === 'b' && done(e)) w.players[e.owner].popCap += popOf(w, e);
   for (const P of w.players) { P.popCap = Math.min(w.popMax, P.popCap); onPop(w, P); }
 
-  if (w.tick % 10 === 0) { updRegions(w); updGoals(w); }
+  if (w.tick % 10 === 0) { updRegions(w); updGoals(w); for (const P of w.players) if (P.alive) updSettle(w, P); }
+  if (w.tick % 10 === 0) for (const e of w.ents.values()) if (e.kind === 'b' && e.type === 'power_plant' && done(e)) w.players[e.owner].res.energy += Math.floor((ENERGY_RATE * (100 + w.players[e.owner].mods.energy)) / 100); // электростанции (Термояд — вдвое)
+  if (w.tick % 100 === 0) for (const P of w.players) for (const [r, base] of Object.entries(MARKET_BASE) as [Res, number][]) { // цены медленно возвращаются к обычным
+    const p = P.prices[r] ?? base;
+    P.prices[r] = p + Math.sign(base - p);
+  }
   if (w.eventsOn && w.tick >= w.nextEvent) { randomEvent(w); w.nextEvent = w.tick + EVENT_MIN + w.rng.int(EVENT_VAR); }
   if (w.tick % 10 === 0 && w.winner < 0) {
     const has = new Set<number>();

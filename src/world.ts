@@ -1,16 +1,17 @@
 import { Rng } from './rng.ts';
-import { BUILDINGS, UNITS, RES, TILE, EVENT_MIN, EVENT_VAR, type Res, type RegionKind } from './defs.ts';
+import { BUILDINGS, UNITS, RES, TILE, MARKET_BASE, EVENT_MIN, EVENT_VAR, type Res, type RegionKind } from './defs.ts';
 import { genMap } from './map.ts';
 import { baseMods, baseStats, chron, type Branch, type Mods, type Stats, type Chron } from './civ.ts';
 
 export type Order =
   | { t: 'idle' }
-  | { t: 'move'; x: number; y: number }
+  | { t: 'move'; x: number; y: number; sp?: number } // sp — предел скорости: отряд в строю идёт шагом самого медленного
   | { t: 'gather'; tile: number; back: boolean }
   | { t: 'build'; target: number }
   | { t: 'farm'; target: number; back: boolean }
   | { t: 'attack'; target: number; ax?: number; ay?: number } // ax/ay — куда вернуться после боя при атаке с движением
-  | { t: 'amove'; x: number; y: number };
+  | { t: 'amove'; x: number; y: number; sp?: number }
+  | { t: 'trade'; home: number; dest: number; leg: number }; // повозка: leg 0 — к чужому рынку, 1 — домой с золотом
 
 export interface Unit {
   id: number; kind: 'u'; type: string; owner: number; x: number; y: number; hp: number;
@@ -31,12 +32,13 @@ export type Entity = Unit | Building;
 export interface Region { name: string; kind: RegionKind; owner: number; size: number; }
 export interface Player {
   id: number; res: Record<Res, number>; age: number; ageing: boolean; pop: number; popCap: number; alive: boolean;
-  techs: string[]; culture: Record<Branch, number>; mods: Mods; stats: Stats; flags: Record<string, boolean>; econAcc: number;
+  settle: number; prices: Partial<Record<Res, number>>; techs: string[]; culture: Record<Branch, number>; mods: Mods; stats: Stats; flags: Record<string, boolean>; econAcc: number;
   effects: Record<string, number>; bonusSlots: number; // временные эффекты событий (до какого тика), лишние слоты
 }
 
 export interface World {
   tick: number; W: number; H: number;
+  debug?: boolean; // ?debug в одиночной игре: разрешены читы (команда cheat)
   teams: number[]; popMax: number; eventsOn: boolean; victory: { terr: boolean; eco: boolean; cult: boolean; sci: boolean }; // правила партии
   terrain: Uint8Array;  // 0 равнина, 1 вода, 2 горы, 3 холм
   resType: Uint8Array;  // 0 нет, иначе индекс RES + 1
@@ -60,7 +62,7 @@ export interface Fx { k: 'hit' | 'die' | 'spawn' | 'built' | 'age' | 'news' | 's
 export const STARTS = [[0.15, 0.15], [0.85, 0.85], [0.85, 0.15], [0.15, 0.85], [0.5, 0.12], [0.5, 0.88], [0.12, 0.5], [0.88, 0.5]];
 
 export interface WorldOpts { teams?: number[]; startRes?: 'std' | 'high' | 'max'; startAge?: number; popMax?: number; events?: boolean; victory?: World['victory'] }
-const START_RES = { std: { food: 200, wood: 200, stone: 100, iron: 0 }, high: { food: 1000, wood: 1000, stone: 500, iron: 300 }, max: { food: 5000, wood: 5000, stone: 3000, iron: 2000 } };
+const START_RES = { std: { food: 200, wood: 200, stone: 100, iron: 0, gold: 0, energy: 0 }, high: { food: 1000, wood: 1000, stone: 500, iron: 300, gold: 200, energy: 100 }, max: { food: 5000, wood: 5000, stone: 3000, iron: 2000, gold: 1500, energy: 500 } };
 // Союзники: один игрок или одна команда (0 — без команды)
 export const ally = (w: World, a: number, b: number) => a === b || (w.teams[a] > 0 && w.teams[a] === w.teams[b]);
 
@@ -77,7 +79,7 @@ export function createWorld(seed: number, nPlayers = 2, W = 100, H = 100, o: Wor
   w.nextEvent = EVENT_MIN + w.rng.int(EVENT_VAR);
   starts.forEach(([x, y], p) => {
     w.players.push({ id: p, res: { ...START_RES[o.startRes ?? 'std'] }, age: o.startAge ?? 0, ageing: false, pop: 0, popCap: 10, alive: true,
-      techs: [], culture: { mil: 0, eco: 0, sci: 0, civ: 0 }, mods: baseMods(), stats: baseStats(), flags: {}, econAcc: 0, effects: {}, bonusSlots: 0 });
+      settle: 0, prices: { ...MARKET_BASE }, techs: [], culture: { mil: 0, eco: 0, sci: 0, civ: 0 }, mods: baseMods(), stats: baseStats(), flags: {}, econAcc: 0, effects: {}, bonusSlots: 0 });
     chron(w, p, 'Основано поселение');
     const tc = addBuilding(w, 'town_center', p, x - 1, y - 1, true);
     for (let i = 0; i < 3; i++) spawnUnit(w, 'villager', p, tc); // «начал с трёх человек»
@@ -149,7 +151,7 @@ export function spawnUnit(w: World, type: string, owner: number, b: Building, pr
           order: { t: 'idle' }, path: [], pkey: -1, wait: 0, cd: 0, carry: 0, carryRes: null, timer: 0, lastBy: -1, oq: [], sx: -1e9, sy: -1e9, crowdT: 0,
         };
         w.ents.set(u.id, u);
-        if (!UNITS[type].animal) w.players[owner].pop++;
+        if (!UNITS[type].animal && !UNITS[type].noPop) w.players[owner].pop++;
     return u;
     }
   }
@@ -161,7 +163,11 @@ export function hash(w: World) {
   let h = 2166136261;
   const mix = (v: number) => { h = Math.imul(h ^ (v | 0), 16777619); };
   mix(w.tick);
-  for (const p of w.players) for (const r of RES) mix(p.res[r]);
-  for (const e of w.ents.values()) { mix(e.id); mix(e.hp); if (e.kind === 'u') { mix(e.x); mix(e.y); } }
+  const str = (t: string) => { for (let i = 0; i < t.length; i++) mix(t.charCodeAt(i)); };
+  for (const p of w.players) { for (const r of RES) mix(p.res[r]); mix(p.age); mix(p.settle); for (const r of RES) mix(p.prices[r] ?? 0); mix(p.techs.length); mix(p.popCap); }
+  for (const e of w.ents.values()) { // не только координаты: расхождение в приказах и очередях ловим сразу, а не через минуту
+    mix(e.id); mix(e.hp);
+    if (e.kind === 'u') { mix(e.x); mix(e.y); str(e.order.t); } else { mix(e.progress); mix(e.qt); mix(e.queue.length); }
+  }
   return (h >>> 0).toString(16);
 }

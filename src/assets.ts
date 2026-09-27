@@ -10,6 +10,7 @@ export interface Assets {
   units: Record<string, Partial<Record<AnimKey, LayerLike[]>>>; // тип → анимация → кадры
   udur: Record<string, Partial<Record<AnimKey, number>>>;      // длительность клипа, с
   buildings: Record<string, LayerLike[]>;                       // тип → варианты по цветам игроков
+  staged: Record<string, LayerLike[][][]>;                      // тип → [эпоха][вариант][стадия стройки] (пак Quaternius)
   trees: LayerLike[]; rock: LayerLike | null; iron: LayerLike | null; bush: LayerLike | null;
   textures: Record<string, Texture>;
   layers: LayerLike[]; natureLayers: LayerLike[];
@@ -17,7 +18,7 @@ export interface Assets {
 interface AnimRef { file: string; name: string; }
 interface Manifest {
   units?: Record<string, { file: string; anims: Partial<Record<AnimKey, AnimRef | null>> }>;
-  buildings?: Record<string, string[]>; nature?: { tree?: string | null; trees?: string[]; rock?: string | null; bush?: string | null }; textures?: Record<string, string>;
+  buildings?: Record<string, string[]>; staged?: Record<string, string[][][]>; nature?: { tree?: string | null; trees?: string[]; rock?: string | null; bush?: string | null }; textures?: Record<string, string>;
 }
 
 const ROOT = '/assets/';
@@ -37,6 +38,7 @@ function solid(mat: Material | null) {
   if ('useAlphaFromDiffuseTexture' in m) m.useAlphaFromDiffuseTexture = false;
   for (const t of [m.albedoTexture, m.diffuseTexture]) if (t) t.hasAlpha = false;
   if ('metallic' in m) { m.metallic = 0; m.roughness = 0.75; } // мягкий стилизованный вид вместо металла
+  if ('twoSidedLighting' in m) m.twoSidedLighting = false; // нормали в снимке уже наружу; иначе у doubleSided-моделей (Quaternius) после разворота граней свет «со спины» — они чёрные
 }
 // Перекраска (для железной руды из обычного камня): клон материала с другим цветом
 function tint(mesh: Mesh, c: Color3) {
@@ -65,12 +67,22 @@ function snapshot(scene: Scene, meshes: AbstractMesh[], skinned: boolean): Mesh 
     if (wm.determinant() < 0) for (let i = 0; i < idx.length; i += 3) { const t = idx[i + 1]; idx[i + 1] = idx[i + 2]; idx[i + 2] = t; } // зеркало glTF → разворот граней
     const vd = new VertexData(), nrm: number[] = [];
     vd.positions = out; vd.indices = idx; vd.uvs = src.uvs ?? new Float32Array((pos.length / 3) * 2);
-    VertexData.ComputeNormals(out, idx, nrm);
+    const fileN = m.getNormalsData(skinned, false); // родные нормали из файла (для юнитов — уже в позе скелета)
+    if (fileN && fileN.length === pos.length) for (let i = 0; i < fileN.length; i += 3) {
+      Vector3.TransformNormalFromFloatsToRef(fileN[i], fileN[i + 1], fileN[i + 2], wm, v);
+      v.normalize(); nrm.push(v.x, v.y, v.z);
+    } else VertexData.ComputeNormals(out, idx, nrm); // пересчёт после зеркала давал нормали «со спины» — модели выглядели почти чёрными
+    // Страховка: в среднем нормали должны смотреть от центра модели, иначе освещённая сторона темнеет
+    let cx = 0, cy = 0, cz = 0, n = out.length / 3, dot = 0;
+    for (let i = 0; i < out.length; i += 3) { cx += out[i]; cy += out[i + 1]; cz += out[i + 2]; }
+    cx /= n; cy /= n; cz /= n;
+    for (let i = 0; i < out.length; i += 3) dot += nrm[i] * (out[i] - cx) + nrm[i + 1] * (out[i + 1] - cy) + nrm[i + 2] * (out[i + 2] - cz);
+    if (dot < 0) for (let i = 0; i < nrm.length; i++) nrm[i] = -nrm[i];
     vd.normals = nrm;
     const p = new Mesh('part', scene);
     vd.applyToMesh(p);
+    solid(m.material);
     p.material = m.material;
-    solid(p.material);
     parts.push(p);
   }
   return parts.length ? Mesh.MergeMeshes(parts, true, true, undefined, false, true) : null;
@@ -89,12 +101,14 @@ function cleanup(c: AssetContainer) { // материалы оставляем �
   for (const s of c.skeletons) s.dispose();
 }
 
-async function loadStatic(scene: Scene, file: string, footprint: number): Promise<Mesh | null> {
+// fit: общий масштаб для стадий стройки одного здания — первым грузится готовое, остальные подгоняются под него
+interface Fit { s?: number; ox?: number; oy?: number; oz?: number; keepBase?: boolean }
+async function loadStatic(scene: Scene, file: string, footprint: number, fit: Fit = {}): Promise<Mesh | null> {
   const c = await load(file, scene);
   c.addAllToScene();
   let ms = c.meshes.filter((x) => x.getTotalVertices() > 0 && x.isEnabled());
   // Выкидываем «подставки»: шестигранные плиты-основания и плоские подложки, на которых стоят здания в паке
-  const box = (x: AbstractMesh) => { x.computeWorldMatrix(true); x.refreshBoundingInfo(); return x.getBoundingInfo().boundingBox; };
+  const box = (x: AbstractMesh) => { x.computeWorldMatrix(true); x.refreshBoundingInfo({}); return x.getBoundingInfo().boundingBox; };
   const all = ms.map(box), top = Math.max(...all.map((b) => b.maximumWorld.y)), bottom = Math.min(...all.map((b) => b.minimumWorld.y));
   const wide = Math.max(...all.map((b) => (b.maximumWorld.x - b.minimumWorld.x) * (b.maximumWorld.z - b.minimumWorld.z)));
   const keep = ms.filter((x, i) => {
@@ -102,12 +116,15 @@ async function loadStatic(scene: Scene, file: string, footprint: number): Promis
     const area = (b.maximumWorld.x - b.minimumWorld.x) * (b.maximumWorld.z - b.minimumWorld.z);
     return !/hex|tile|base|ground/i.test(x.name) && !(flat && area > wide * 0.6);
   });
-  if (keep.length) ms = keep;
+  if (keep.length && !fit.keepBase) ms = keep;
   const m = snapshot(scene, ms, false);
   cleanup(c);
   if (!m) return null;
-  const b = m.getBoundingInfo().boundingBox, ext = Math.max(b.maximum.x - b.minimum.x, b.maximum.z - b.minimum.z) || 1;
-  normalize(m, footprint / ext, (b.minimum.x + b.maximum.x) / 2, b.minimum.y, (b.minimum.z + b.maximum.z) / 2);
+  if (fit.s === undefined) {
+    const b = m.getBoundingInfo().boundingBox, ext = Math.max(b.maximum.x - b.minimum.x, b.maximum.z - b.minimum.z) || 1;
+    Object.assign(fit, { s: footprint / ext, ox: (b.minimum.x + b.maximum.x) / 2, oy: b.minimum.y, oz: (b.minimum.z + b.maximum.z) / 2 });
+  }
+  normalize(m, fit.s!, fit.ox!, fit.oy!, fit.oz!);
   return m;
 }
 
@@ -163,7 +180,7 @@ export async function loadAssets(scene: Scene, make: (m: Mesh) => LayerLike, siz
     if (!r.ok) return null;
     man = await r.json();
   } catch { return null; }
-  const A: Assets = { units: {}, udur: {}, buildings: {}, trees: [], rock: null, iron: null, bush: null, textures: {}, layers: [], natureLayers: [] };
+  const A: Assets = { units: {}, udur: {}, buildings: {}, staged: {}, trees: [], rock: null, iron: null, bush: null, textures: {}, layers: [], natureLayers: [] };
   const cache = new Map<string, LayerLike>(), libs = new Map<string, AssetContainer>();
   const staticLayer = async (file: string, footprint: number, color?: Color3) => {
     const key = `${file}@${footprint}@${color?.toHexString() ?? ''}`;
@@ -180,6 +197,24 @@ export async function loadAssets(scene: Scene, make: (m: Mesh) => LayerLike, siz
     const ls: LayerLike[] = [];
     for (const f of files) { const l = await staticLayer(f, sizes[type].size * 0.95); if (l) ls.push(l); }
     if (ls.length) A.buildings[type] = ls;
+  }
+  for (const [type, tiers] of Object.entries(man.staged ?? {})) { // здания по эпохам со стадиями стройки
+    if (!sizes[type]) continue;
+    const out: LayerLike[][][] = [];
+    for (const tier of tiers) {
+      const vs: LayerLike[][] = [];
+      for (const stages of tier) {
+        const fit: Fit = { keepBase: true }, ls: (LayerLike | null)[] = new Array(stages.length).fill(null);
+        for (let i = stages.length - 1; i >= 0; i--) { // готовое — первым: по нему масштаб для остальных стадий
+          const m = await loadStatic(scene, stages[i], sizes[type].size * 0.95, fit).catch((e) => { console.warn('Модель не загрузилась:', stages[i], e); return null; });
+          if (m) { const l = make(m); ls[i] = l; A.layers.push(l); }
+        }
+        const ok = ls.filter((l): l is LayerLike => !!l);
+        if (ls[ls.length - 1] && ok.length) vs.push(ok);
+      }
+      if (vs.length) out.push(vs);
+    }
+    if (out.length) A.staged[type] = out;
   }
   for (const [type, spec] of Object.entries(man.units ?? {})) {
     const got = await loadUnit(scene, spec, libs).catch((e) => { console.warn('Юнит не загрузился:', type, e); return null; });
