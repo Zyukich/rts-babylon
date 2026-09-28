@@ -1,0 +1,655 @@
+{
+  "$comment": "Каталог ассетов: какая модель, анимации, текстуры и звуки у чего в игре. Правите здесь → npm run assets. Подробно — assets/README.md",
+  "packs": {
+    "$comment": "Наборы моделей. url — скачать zip, zip — лежит в assets/packs. Файлы из пака пишутся как \"id-пака:путь/внутри/архива\"",
+    "kaykit-adventurers": {
+      "url": "https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0/archive/refs/heads/main.zip",
+      "stripRoot": true,
+      "license": "CC0"
+    },
+    "kaykit-hexagon": {
+      "url": "https://github.com/KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0/archive/refs/heads/main.zip",
+      "stripRoot": true,
+      "license": "CC0"
+    },
+    "quaternius-rts": {
+      "zip": "packs/Ultimate Fantasy RTS.zip",
+      "license": "CC0",
+      "site": "https://quaternius.com/packs/ultimatefantasyrts.html"
+    }
+  },
+  "style": {
+    "$comment": "Общий вид: масштаб юнитов и деревьев, какой набор зданий пака на какой эпохе, палитра земли, кадры запечённых анимаций",
+    "unitScale": 0.72,
+    "treeScale": 1.4,
+    "ageTier": [
+      0,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    "animFrames": {
+      "idle": 12,
+      "walk": 24,
+      "attack": 16,
+      "shoot": 16,
+      "work": 16,
+      "die": 16
+    },
+    "unitHeight": 0.95,
+    "palette": {
+      "grass": [
+        0.4,
+        0.6,
+        0.3
+      ],
+      "grassLight": [
+        0.5,
+        0.66,
+        0.33
+      ],
+      "dirt": [
+        0.66,
+        0.53,
+        0.37
+      ],
+      "sand": [
+        0.9,
+        0.82,
+        0.6
+      ],
+      "rock": [
+        0.6,
+        0.6,
+        0.62
+      ],
+      "snow": [
+        0.95,
+        0.96,
+        0.98
+      ],
+      "meadow": [
+        0.27,
+        0.42,
+        0.14
+      ],
+      "meadowDry": [
+        0.5,
+        0.46,
+        0.22
+      ]
+    }
+  },
+  "textures": {
+    "$comment": "Земля. polyhaven — slug-и с polyhaven.com по очереди (скачается 1k jpg + карта нормалей), file — свой файл из assets/textures",
+    "grass": {
+      "polyhaven": [
+        "aerial_grass_rock",
+        "leafy_grass",
+        "grass_path_2"
+      ]
+    },
+    "rock": {
+      "polyhaven": [
+        "rocky_terrain_02",
+        "aerial_rocks_02",
+        "rock_face"
+      ]
+    },
+    "sand": {
+      "polyhaven": [
+        "coast_sand_01",
+        "aerial_beach_01",
+        "sand_01"
+      ]
+    },
+    "dirt": {
+      "polyhaven": [
+        "forrest_ground_01",
+        "brown_mud_leaves_01",
+        "dry_ground_01",
+        "rocky_trail"
+      ]
+    }
+  },
+  "sounds": {
+    "$comment": "Звуки. file — из assets/sounds (ogg/mp3/wav). null — синтезированная заглушка",
+    "move": {
+      "file": null,
+      "volume": 1
+    },
+    "attack": {
+      "file": null,
+      "volume": 1
+    },
+    "train": {
+      "file": null,
+      "volume": 1
+    },
+    "built": {
+      "file": null,
+      "volume": 1
+    },
+    "age": {
+      "file": null,
+      "volume": 1
+    },
+    "hit": {
+      "file": null,
+      "volume": 1
+    },
+    "die": {
+      "file": null,
+      "volume": 1
+    },
+    "alert": {
+      "file": null,
+      "volume": 1
+    },
+    "news": {
+      "file": null,
+      "volume": 1
+    }
+  },
+  "units": {
+    "$comment": "height — высота для полоски здоровья и рамки выделения (в ростах); model — файл; anims — idle/walk/attack/shoot/work/die: имя клипа в файле или { file, name } из другого файла",
+    "villager": {
+      "model": "kaykit-adventurers:addons/kaykit_character_pack_adventures/Characters/gltf/Rogue_Hooded.glb",
+      "anims": {
+        "idle": "Idle",
+        "walk": "Walking_A",
+        "attack": "1H_Melee_Attack_Chop",
+        "shoot": "2H_Ranged_Shoot",
+        "work": "Interact",
+        "die": "Death_A"
+      }
+    },
+    "clubman": {
+      "model": "kaykit-adventurers:addons/kaykit_character_pack_adventures/Characters/gltf/Barbarian.glb",
+      "anims": {
+        "idle": "Idle",
+        "walk": "Walking_A",
+        "attack": "1H_Melee_Attack_Chop",
+        "shoot": "2H_Ranged_Shoot",
+        "work": "Interact",
+        "die": "Death_A"
+      }
+    },
+    "spearman": {
+      "model": "kaykit-adventurers:addons/kaykit_character_pack_adventures/Characters/gltf/Knight.glb",
+      "anims": {
+        "idle": "Idle",
+        "walk": "Walking_A",
+        "attack": "1H_Melee_Attack_Chop",
+        "shoot": "2H_Ranged_Shoot",
+        "work": "Interact",
+        "die": "Death_A"
+      }
+    },
+    "archer": {
+      "model": "kaykit-adventurers:addons/kaykit_character_pack_adventures/Characters/gltf/Rogue.glb",
+      "anims": {
+        "idle": "Idle",
+        "walk": "Walking_A",
+        "attack": "1H_Melee_Attack_Chop",
+        "shoot": "2H_Ranged_Shoot",
+        "work": "Interact",
+        "die": "Death_A"
+      }
+    },
+    "swordsman": {
+      "model": "kaykit-adventurers:addons/kaykit_character_pack_adventures/Characters/gltf/Knight.glb",
+      "anims": {
+        "idle": "Idle",
+        "walk": "Walking_A",
+        "attack": "1H_Melee_Attack_Chop",
+        "shoot": "2H_Ranged_Shoot",
+        "work": "Interact",
+        "die": "Death_A"
+      }
+    },
+    "hunter": {
+      "model": "kaykit-adventurers:addons/kaykit_character_pack_adventures/Characters/gltf/Barbarian.glb",
+      "anims": {
+        "idle": "Idle",
+        "walk": "Walking_A",
+        "attack": "1H_Melee_Attack_Chop",
+        "shoot": "2H_Ranged_Shoot",
+        "work": "Interact",
+        "die": "Death_A"
+      }
+    },
+    "scout": {
+      "height": 1.5
+    },
+    "trader": {},
+    "legionary": {
+      "model": "kaykit-adventurers:addons/kaykit_character_pack_adventures/Characters/gltf/Knight.glb",
+      "anims": {
+        "idle": "Idle",
+        "walk": "Walking_A",
+        "attack": "1H_Melee_Attack_Chop",
+        "shoot": "2H_Ranged_Shoot",
+        "work": "Interact",
+        "die": "Death_A"
+      }
+    },
+    "crossbowman": {
+      "model": "kaykit-adventurers:addons/kaykit_character_pack_adventures/Characters/gltf/Rogue.glb",
+      "anims": {
+        "idle": "Idle",
+        "walk": "Walking_A",
+        "attack": "1H_Melee_Attack_Chop",
+        "shoot": "2H_Ranged_Shoot",
+        "work": "Interact",
+        "die": "Death_A"
+      }
+    },
+    "knight": {
+      "height": 1.6
+    },
+    "horseman": {
+      "height": 1.5
+    },
+    "cow": {},
+    "musketeer": {},
+    "cuirassier": {
+      "height": 1.6
+    },
+    "cannon": {
+      "height": 0.8
+    },
+    "rifleman": {},
+    "machinegunner": {},
+    "artillery": {
+      "height": 0.9
+    },
+    "tank": {
+      "height": 1.0
+    },
+    "bazooka": {},
+    "aa_gun": {
+      "height": 1.0
+    },
+    "fighter": {
+      "height": 0.5
+    },
+    "bomber": {
+      "height": 0.6
+    },
+    "marine": {},
+    "apc": {
+      "height": 0.9
+    },
+    "mlrs": {
+      "height": 1.0
+    },
+    "sam": {
+      "height": 1.0
+    },
+    "jet": {
+      "height": 0.5
+    },
+    "helicopter": {
+      "height": 0.7
+    },
+    "laser_trooper": {},
+    "drone": {
+      "height": 0.3
+    },
+    "mech": {
+      "height": 1.5
+    },
+    "railgun": {
+      "height": 1.0
+    },
+    "ram": {
+      "height": 1.1
+    }
+  },
+  "buildings": {
+    "$comment": "height — высота корпуса; scale — [ширина, высота]; flag — флаг владельца; props — быт вокруг; ages — [эпоха пака][вариант][стадия стройки]; colors — модели по цветам игроков (если нет ages)",
+    "town_center": {
+      "height": 3,
+      "scale": [
+        1.08,
+        0.72
+      ],
+      "props": [
+        "crate",
+        "barrel",
+        "sack",
+        "cart",
+        "crate"
+      ],
+      "ages": [
+        [
+          [
+            "quaternius-rts:glTF/TowerHouse_FirstAge.gltf"
+          ]
+        ],
+        [
+          [
+            "quaternius-rts:glTF/TowerHouse_SecondAge.gltf"
+          ]
+        ]
+      ],
+      "colors": [
+        "kaykit-hexagon:addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/blue/building_castle_blue.gltf",
+        "kaykit-hexagon:addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/red/building_castle_red.gltf",
+        "kaykit-hexagon:addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/yellow/building_castle_yellow.gltf",
+        "kaykit-hexagon:addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/green/building_castle_green.gltf"
+      ]
+    },
+    "house": {
+      "height": 1.7,
+      "props": [
+        "barrel",
+        "crate",
+        "fence",
+        "woodpile"
+      ],
+      "ages": [
+        [
+          [
+            "quaternius-rts:glTF/Houses_FirstAge_1_Level1.gltf",
+            "quaternius-rts:glTF/Houses_FirstAge_1_Level2.gltf",
+            "quaternius-rts:glTF/Houses_FirstAge_1_Level3.gltf"
+          ],
+          [
+            "quaternius-rts:glTF/Houses_FirstAge_2_Level1.gltf",
+            "quaternius-rts:glTF/Houses_FirstAge_2_Level2.gltf",
+            "quaternius-rts:glTF/Houses_FirstAge_2_Level3.gltf"
+          ],
+          [
+            "quaternius-rts:glTF/Houses_FirstAge_3_Level1.gltf",
+            "quaternius-rts:glTF/Houses_FirstAge_3_Level2.gltf",
+            "quaternius-rts:glTF/Houses_FirstAge_3_Level3.gltf"
+          ]
+        ],
+        [
+          [
+            "quaternius-rts:glTF/Houses_SecondAge_1_Level1.gltf",
+            "quaternius-rts:glTF/Houses_SecondAge_1_Level2.gltf",
+            "quaternius-rts:glTF/Houses_SecondAge_1_Level3.gltf"
+          ],
+          [
+            "quaternius-rts:glTF/Houses_SecondAge_2_Level1.gltf",
+            "quaternius-rts:glTF/Houses_SecondAge_2_Level2.gltf",
+            "quaternius-rts:glTF/Houses_SecondAge_2_Level3.gltf"
+          ],
+          [
+            "quaternius-rts:glTF/Houses_SecondAge_3_Level1.gltf",
+            "quaternius-rts:glTF/Houses_SecondAge_3_Level2.gltf",
+            "quaternius-rts:glTF/Houses_SecondAge_3_Level3.gltf"
+          ]
+        ]
+      ],
+      "colors": [
+        "kaykit-hexagon:addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/blue/building_home_A_blue.gltf",
+        "kaykit-hexagon:addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/red/building_home_A_red.gltf",
+        "kaykit-hexagon:addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/yellow/building_home_A_yellow.gltf",
+        "kaykit-hexagon:addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/green/building_home_A_green.gltf"
+      ]
+    },
+    "farm": {
+      "height": 0.3,
+      "flag": false
+    },
+    "pasture": {
+      "height": 0.6,
+      "flag": false,
+      "props": [
+        "hay",
+        "sack",
+        "cart"
+      ],
+      "ages": [
+        [
+          [
+            "quaternius-rts:glTF/Windmill_FirstAge.gltf"
+          ]
+        ],
+        [
+          [
+            "quaternius-rts:glTF/Windmill_SecondAge.gltf"
+          ]
+        ]
+      ]
+    },
+    "camp": {
+      "height": 1.2,
+      "props": [
+        "woodpile",
+        "cart",
+        "sack"
+      ],
+      "ages": [
+        [
+          [
+            "quaternius-rts:glTF/Mine.gltf"
+          ]
+        ],
+        [
+          [
+            "quaternius-rts:glTF/Mine.gltf"
+          ]
+        ]
+      ],
+      "colors": [
+        "kaykit-hexagon:addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/blue/building_lumbermill_blue.gltf",
+        "kaykit-hexagon:addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/red/building_lumbermill_red.gltf",
+        "kaykit-hexagon:addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/yellow/building_lumbermill_yellow.gltf",
+        "kaykit-hexagon:addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/green/building_lumbermill_green.gltf"
+      ]
+    },
+    "barracks": {
+      "height": 2.2,
+      "props": [
+        "crate",
+        "barrel",
+        "fence"
+      ],
+      "ages": [
+        [
+          [
+            "quaternius-rts:glTF/Barracks_FirstAge_Level1.gltf",
+            "quaternius-rts:glTF/Barracks_FirstAge_Level2.gltf",
+            "quaternius-rts:glTF/Barracks_FirstAge_Level3.gltf"
+          ]
+        ],
+        [
+          [
+            "quaternius-rts:glTF/Barracks_SecondAge_Level1.gltf",
+            "quaternius-rts:glTF/Barracks_SecondAge_Level2.gltf",
+            "quaternius-rts:glTF/Barracks_SecondAge_Level3.gltf"
+          ]
+        ]
+      ],
+      "colors": [
+        "kaykit-hexagon:addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/blue/building_barracks_blue.gltf",
+        "kaykit-hexagon:addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/red/building_barracks_red.gltf",
+        "kaykit-hexagon:addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/yellow/building_barracks_yellow.gltf",
+        "kaykit-hexagon:addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/green/building_barracks_green.gltf"
+      ]
+    },
+    "archery": {
+      "height": 1.9,
+      "props": [
+        "crate",
+        "hay",
+        "fence"
+      ],
+      "ages": [
+        [
+          [
+            "quaternius-rts:glTF/Archery_FirstAge_Level1.gltf",
+            "quaternius-rts:glTF/Archery_FirstAge_Level2.gltf",
+            "quaternius-rts:glTF/Archery_FirstAge_Level3.gltf"
+          ]
+        ],
+        [
+          [
+            "quaternius-rts:glTF/Archery_SecondAge_Level1.gltf",
+            "quaternius-rts:glTF/Archery_SecondAge_Level2.gltf",
+            "quaternius-rts:glTF/Archery_SecondAge_Level3.gltf"
+          ]
+        ]
+      ],
+      "colors": [
+        "kaykit-hexagon:addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/blue/building_archeryrange_blue.gltf",
+        "kaykit-hexagon:addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/red/building_archeryrange_red.gltf",
+        "kaykit-hexagon:addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/yellow/building_archeryrange_yellow.gltf",
+        "kaykit-hexagon:addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/green/building_archeryrange_green.gltf"
+      ]
+    },
+    "tower": {
+      "height": 3.2,
+      "ages": [
+        [
+          [
+            "quaternius-rts:glTF/WatchTower_FirstAge_Level1.gltf",
+            "quaternius-rts:glTF/WatchTower_FirstAge_Level2.gltf",
+            "quaternius-rts:glTF/WatchTower_FirstAge_Level3.gltf"
+          ]
+        ],
+        [
+          [
+            "quaternius-rts:glTF/WatchTower_SecondAge_Level1.gltf",
+            "quaternius-rts:glTF/WatchTower_SecondAge_Level2.gltf",
+            "quaternius-rts:glTF/WatchTower_SecondAge_Level3.gltf"
+          ]
+        ]
+      ],
+      "colors": [
+        "kaykit-hexagon:addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/blue/building_tower_A_blue.gltf",
+        "kaykit-hexagon:addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/red/building_tower_A_red.gltf",
+        "kaykit-hexagon:addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/yellow/building_tower_A_yellow.gltf",
+        "kaykit-hexagon:addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/green/building_tower_A_green.gltf"
+      ]
+    },
+    "wall": {
+      "height": 1.3,
+      "flag": false
+    },
+    "gate": {
+      "height": 1.5,
+      "flag": false
+    },
+    "market": {
+      "props": [
+        "crate",
+        "barrel",
+        "sack",
+        "cart",
+        "crate"
+      ],
+      "ages": [
+        [
+          [
+            "quaternius-rts:glTF/Market_FirstAge_Level1.gltf",
+            "quaternius-rts:glTF/Market_FirstAge_Level2.gltf",
+            "quaternius-rts:glTF/Market_FirstAge_Level3.gltf"
+          ]
+        ],
+        [
+          [
+            "quaternius-rts:glTF/Market_SecondAge_Level1.gltf",
+            "quaternius-rts:glTF/Market_SecondAge_Level2.gltf",
+            "quaternius-rts:glTF/Market_SecondAge_Level3.gltf"
+          ]
+        ]
+      ],
+      "colors": [
+        "kaykit-hexagon:addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/blue/building_market_blue.gltf",
+        "kaykit-hexagon:addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/red/building_market_red.gltf",
+        "kaykit-hexagon:addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/yellow/building_market_yellow.gltf",
+        "kaykit-hexagon:addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/green/building_market_green.gltf"
+      ]
+    },
+    "stable": {
+      "height": 1.9,
+      "props": [
+        "hay",
+        "hay",
+        "fence"
+      ],
+      "ages": [
+        [
+          [
+            "quaternius-rts:glTF/Storage_FirstAge_Level1.gltf",
+            "quaternius-rts:glTF/Storage_FirstAge_Level2.gltf",
+            "quaternius-rts:glTF/Storage_FirstAge_Leve3.gltf"
+          ]
+        ],
+        [
+          [
+            "quaternius-rts:glTF/Storage_SecondAge_Level1.gltf",
+            "quaternius-rts:glTF/Storage_SecondAge_Level2.gltf",
+            "quaternius-rts:glTF/Storage_SecondAge_Level3.gltf"
+          ]
+        ]
+      ]
+    },
+    "workshop": {
+      "height": 2.4,
+      "props": [
+        "woodpile",
+        "crate",
+        "cart"
+      ],
+      "ages": [
+        [
+          [
+            "quaternius-rts:glTF/Temple_FirstAge_Level1.gltf",
+            "quaternius-rts:glTF/Temple_FirstAge_Level2.gltf",
+            "quaternius-rts:glTF/Temple_FirstAge_Level3.gltf"
+          ]
+        ],
+        [
+          [
+            "quaternius-rts:glTF/Temple_SecondAge_Level1.gltf",
+            "quaternius-rts:glTF/Temple_SecondAge_Level2.gltf",
+            "quaternius-rts:glTF/Temple_SecondAge_Level3.gltf"
+          ]
+        ]
+      ],
+      "colors": [
+        "kaykit-hexagon:addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/blue/building_blacksmith_blue.gltf",
+        "kaykit-hexagon:addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/red/building_blacksmith_red.gltf",
+        "kaykit-hexagon:addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/yellow/building_blacksmith_yellow.gltf",
+        "kaykit-hexagon:addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/green/building_blacksmith_green.gltf"
+      ]
+    },
+    "factory": {
+      "props": [
+        "crate",
+        "barrel",
+        "cart"
+      ]
+    },
+    "airfield": {
+      "props": [
+        "barrel",
+        "crate"
+      ]
+    },
+    "drone_hub": {
+      "props": [
+        "crate",
+        "barrel"
+      ]
+    },
+    "power_plant": {
+      "props": [
+        "barrel",
+        "crate",
+        "woodpile"
+      ]
+    }
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "$comment": "Рельеф, регионы, случайные события (секунды)",
+  "terrain": {
+    "hillDamageBonus": 25,
+    "forestCoverPercent": 30,
+    "hillSight": 2,
+    "hillSpeedPercent": 85
+  },
+  "regions": {
+    "bonusPercent": 30,
+    "influence": {
+      "town_center": 5,
+      "tower": 3,
+      "wall": 0,
+      "gate": 0
+    },
+    "kinds": {
+      "plains": {
+        "noun": "равнины",
+        "res": "food",
+        "desc": "+30% еды и урожая"
+      },
+      "forest": {
+        "noun": "леса",
+        "res": "wood",
+        "desc": "+30% дерева"
+      },
+      "quarry": {
+        "noun": "каменоломни",
+        "res": "stone",
+        "desc": "+30% камня"
+      },
+      "iron": {
+        "noun": "горы",
+        "res": "iron",
+        "desc": "+30% железа"
+      }
+    }
+  },
+  "events": {
+    "interval": 150,
+    "intervalSpread": 120
+  }
+}

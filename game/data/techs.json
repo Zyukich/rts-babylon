@@ -1,0 +1,571 @@
+{
+  "$comment": "Технологии. effects — модификаторы (см. README: atk, atkPct, armor, hp, gather, …), researchTime — секунды",
+  "bronze": {
+    "name": "Бронзовые наконечники",
+    "desc": "+1 к атаке войск",
+    "branch": "mil",
+    "age": "primitive",
+    "cost": {
+      "food": 100,
+      "wood": 60
+    },
+    "researchTime": 30,
+    "effects": {
+      "atk": 1
+    }
+  },
+  "drill": {
+    "name": "Строевая подготовка",
+    "desc": "+15% здоровья войск",
+    "branch": "mil",
+    "age": "primitive",
+    "cost": {
+      "food": 150
+    },
+    "researchTime": 30,
+    "effects": {
+      "hp": 15
+    }
+  },
+  "ironarms": {
+    "name": "Железное оружие",
+    "desc": "+2 к атаке войск",
+    "branch": "mil",
+    "age": "ancient",
+    "cost": {
+      "food": 150,
+      "iron": 100
+    },
+    "researchTime": 40,
+    "effects": {
+      "atk": 2
+    }
+  },
+  "stirrups": {
+    "name": "Стремена",
+    "desc": "+20% скорости конницы",
+    "branch": "mil",
+    "age": "ancient",
+    "cost": {
+      "food": 200,
+      "wood": 100
+    },
+    "researchTime": 40,
+    "effects": {
+      "cavSpeed": 20
+    }
+  },
+  "plate": {
+    "name": "Латы",
+    "desc": "+2 к броне войск",
+    "branch": "mil",
+    "age": "medieval",
+    "cost": {
+      "food": 200,
+      "iron": 150,
+      "gold": 100
+    },
+    "researchTime": 50,
+    "effects": {
+      "armor": 2
+    }
+  },
+  "tools": {
+    "name": "Каменные орудия",
+    "desc": "+20% скорости добычи",
+    "branch": "eco",
+    "age": "primitive",
+    "cost": {
+      "food": 100,
+      "wood": 50
+    },
+    "researchTime": 30,
+    "effects": {
+      "gather": 20
+    }
+  },
+  "baskets": {
+    "name": "Корзины",
+    "desc": "+5 к переносимому",
+    "branch": "eco",
+    "age": "primitive",
+    "cost": {
+      "wood": 100
+    },
+    "researchTime": 25,
+    "effects": {
+      "carry": 5
+    }
+  },
+  "plough": {
+    "name": "Плуг",
+    "desc": "+35% урожая ферм",
+    "branch": "eco",
+    "age": "ancient",
+    "cost": {
+      "food": 150,
+      "wood": 150
+    },
+    "researchTime": 40,
+    "effects": {
+      "farm": 35
+    }
+  },
+  "shafts": {
+    "name": "Шахты",
+    "desc": "+35% добычи камня и железа",
+    "branch": "eco",
+    "age": "ancient",
+    "cost": {
+      "wood": 200
+    },
+    "researchTime": 40,
+    "effects": {
+      "mine": 35
+    }
+  },
+  "guilds": {
+    "name": "Гильдии",
+    "desc": "+25% скорости добычи",
+    "branch": "eco",
+    "age": "medieval",
+    "cost": {
+      "food": 300,
+      "stone": 100
+    },
+    "researchTime": 50,
+    "effects": {
+      "gather": 25
+    }
+  },
+  "writing": {
+    "name": "Письменность",
+    "desc": "−25% времени исследований",
+    "branch": "sci",
+    "age": "primitive",
+    "cost": {
+      "food": 120
+    },
+    "researchTime": 25,
+    "effects": {
+      "research": 25
+    }
+  },
+  "astronomy": {
+    "name": "Астрономия",
+    "desc": "+2 к обзору",
+    "branch": "sci",
+    "age": "ancient",
+    "cost": {
+      "food": 150,
+      "stone": 50
+    },
+    "researchTime": 35,
+    "effects": {
+      "sight": 2
+    }
+  },
+  "geometry": {
+    "name": "Геометрия",
+    "desc": "+1 к дальности башен и центров",
+    "branch": "sci",
+    "age": "ancient",
+    "cost": {
+      "wood": 150,
+      "stone": 100
+    },
+    "researchTime": 40,
+    "effects": {
+      "range": 1
+    }
+  },
+  "engineering": {
+    "name": "Инженерия",
+    "desc": "+50% урона по зданиям",
+    "branch": "sci",
+    "age": "medieval",
+    "cost": {
+      "wood": 200,
+      "stone": 150,
+      "gold": 75
+    },
+    "researchTime": 50,
+    "effects": {
+      "siege": 50
+    }
+  },
+  "masonry": {
+    "name": "Каменная кладка",
+    "desc": "+30% прочности зданий",
+    "branch": "civ",
+    "age": "primitive",
+    "cost": {
+      "stone": 100
+    },
+    "researchTime": 30,
+    "effects": {
+      "bldHp": 30
+    }
+  },
+  "housing": {
+    "name": "Общинные дома",
+    "desc": "+3 жителя на дом",
+    "branch": "civ",
+    "age": "primitive",
+    "cost": {
+      "wood": 120
+    },
+    "researchTime": 25,
+    "effects": {
+      "housePop": 3
+    }
+  },
+  "roads": {
+    "name": "Дороги",
+    "desc": "+10% скорости всех юнитов",
+    "branch": "civ",
+    "age": "ancient",
+    "cost": {
+      "wood": 150,
+      "stone": 100
+    },
+    "researchTime": 40,
+    "effects": {
+      "speed": 10
+    }
+  },
+  "calendar": {
+    "name": "Календарь",
+    "desc": "−20% цены следующей эпохи",
+    "branch": "civ",
+    "age": "ancient",
+    "cost": {
+      "food": 200
+    },
+    "researchTime": 30,
+    "effects": {
+      "ageCost": 20
+    }
+  },
+  "law": {
+    "name": "Свод законов",
+    "desc": "+10 мест у центра, +50% здоровья жителей",
+    "branch": "civ",
+    "age": "medieval",
+    "cost": {
+      "food": 200,
+      "stone": 200
+    },
+    "researchTime": 50,
+    "effects": {
+      "tcPop": 10,
+      "vilHp": 50
+    }
+  },
+  "bayonets": {
+    "name": "Штыки",
+    "desc": "+3 к атаке войск",
+    "branch": "mil",
+    "age": "imperial",
+    "cost": {
+      "food": 300,
+      "iron": 200
+    },
+    "researchTime": 50,
+    "effects": {
+      "atk": 3
+    }
+  },
+  "banking": {
+    "name": "Банки",
+    "desc": "+20% скорости добычи",
+    "branch": "eco",
+    "age": "imperial",
+    "cost": {
+      "food": 300,
+      "gold": 200
+    },
+    "researchTime": 50,
+    "effects": {
+      "gather": 20
+    }
+  },
+  "printing": {
+    "name": "Книгопечатание",
+    "desc": "+3 к обзору, быстрее исследования",
+    "branch": "sci",
+    "age": "imperial",
+    "cost": {
+      "wood": 300,
+      "gold": 150
+    },
+    "researchTime": 50,
+    "effects": {
+      "sight": 3,
+      "research": 15
+    }
+  },
+  "bastions": {
+    "name": "Бастионы",
+    "desc": "+40% прочности зданий",
+    "branch": "civ",
+    "age": "imperial",
+    "cost": {
+      "stone": 400
+    },
+    "researchTime": 50,
+    "effects": {
+      "bldHp": 40
+    }
+  },
+  "rifling": {
+    "name": "Нарезные стволы",
+    "desc": "+2 к дальности башен, +3 к атаке",
+    "branch": "mil",
+    "age": "industrial",
+    "cost": {
+      "iron": 400,
+      "gold": 200
+    },
+    "researchTime": 60,
+    "effects": {
+      "range": 2,
+      "atk": 3
+    }
+  },
+  "railways": {
+    "name": "Железные дороги",
+    "desc": "+15% скорости, +10 к переносимому",
+    "branch": "eco",
+    "age": "industrial",
+    "cost": {
+      "wood": 400,
+      "iron": 300
+    },
+    "researchTime": 60,
+    "effects": {
+      "speed": 15,
+      "carry": 10
+    }
+  },
+  "electricity": {
+    "name": "Электричество",
+    "desc": "−25% времени исследований, +30% добычи камня и железа",
+    "branch": "sci",
+    "age": "industrial",
+    "cost": {
+      "gold": 400,
+      "energy": 50
+    },
+    "researchTime": 60,
+    "effects": {
+      "research": 25,
+      "mine": 30
+    }
+  },
+  "sanitation": {
+    "name": "Водопровод",
+    "desc": "+4 жителя на дом, +50% здоровья жителей",
+    "branch": "civ",
+    "age": "industrial",
+    "cost": {
+      "stone": 300,
+      "iron": 200
+    },
+    "researchTime": 60,
+    "effects": {
+      "housePop": 4,
+      "vilHp": 50
+    }
+  },
+  "blitz": {
+    "name": "Блицкриг",
+    "desc": "+10% скорости, +10% урона",
+    "branch": "mil",
+    "age": "mechanized",
+    "cost": {
+      "iron": 500,
+      "energy": 100
+    },
+    "researchTime": 70,
+    "effects": {
+      "speed": 10,
+      "atkPct": 10
+    }
+  },
+  "mechanization": {
+    "name": "Механизация",
+    "desc": "+25% добычи, +35% урожая",
+    "branch": "eco",
+    "age": "mechanized",
+    "cost": {
+      "wood": 500,
+      "energy": 100
+    },
+    "researchTime": 70,
+    "effects": {
+      "gather": 25,
+      "farm": 35
+    }
+  },
+  "radar": {
+    "name": "Радар",
+    "desc": "+3 к обзору, +1 к дальности башен",
+    "branch": "sci",
+    "age": "mechanized",
+    "cost": {
+      "gold": 400,
+      "energy": 150
+    },
+    "researchTime": 70,
+    "effects": {
+      "sight": 3,
+      "range": 1
+    }
+  },
+  "concrete": {
+    "name": "Бетон",
+    "desc": "+50% прочности зданий",
+    "branch": "civ",
+    "age": "mechanized",
+    "cost": {
+      "stone": 600,
+      "energy": 50
+    },
+    "researchTime": 70,
+    "effects": {
+      "bldHp": 50
+    }
+  },
+  "composite": {
+    "name": "Композитная броня",
+    "desc": "+3 к броне войск",
+    "branch": "mil",
+    "age": "modern",
+    "cost": {
+      "iron": 600,
+      "energy": 200
+    },
+    "researchTime": 80,
+    "effects": {
+      "armor": 3
+    }
+  },
+  "automation": {
+    "name": "Автоматизация",
+    "desc": "+30% добычи, +10 к переносимому",
+    "branch": "eco",
+    "age": "modern",
+    "cost": {
+      "gold": 500,
+      "energy": 200
+    },
+    "researchTime": 80,
+    "effects": {
+      "gather": 30,
+      "carry": 10
+    }
+  },
+  "satellites": {
+    "name": "Спутники",
+    "desc": "+4 к обзору, +1 к дальности башен",
+    "branch": "sci",
+    "age": "modern",
+    "cost": {
+      "gold": 600,
+      "energy": 300
+    },
+    "researchTime": 80,
+    "effects": {
+      "sight": 4,
+      "range": 1
+    }
+  },
+  "skyscrapers": {
+    "name": "Небоскрёбы",
+    "desc": "+5 жителей на дом, +20 мест у центра",
+    "branch": "civ",
+    "age": "modern",
+    "cost": {
+      "stone": 800,
+      "iron": 300
+    },
+    "researchTime": 80,
+    "effects": {
+      "housePop": 5,
+      "tcPop": 20
+    }
+  },
+  "plasma": {
+    "name": "Плазменное оружие",
+    "desc": "+20% урона войск",
+    "branch": "mil",
+    "age": "future",
+    "cost": {
+      "gold": 800,
+      "energy": 400
+    },
+    "researchTime": 90,
+    "effects": {
+      "atkPct": 20
+    }
+  },
+  "fusion": {
+    "name": "Термояд",
+    "desc": "Электростанции дают вдвое больше энергии",
+    "branch": "eco",
+    "age": "future",
+    "cost": {
+      "iron": 600,
+      "gold": 600
+    },
+    "researchTime": 90,
+    "effects": {
+      "energy": 100
+    }
+  },
+  "ai_core": {
+    "name": "Искусственный интеллект",
+    "desc": "−30% времени исследований, +2 к обзору",
+    "branch": "sci",
+    "age": "future",
+    "cost": {
+      "gold": 800,
+      "energy": 500
+    },
+    "researchTime": 90,
+    "effects": {
+      "research": 30,
+      "sight": 2
+    }
+  },
+  "arcology": {
+    "name": "Аркологии",
+    "desc": "+5 жителей на дом, +50% прочности зданий",
+    "branch": "civ",
+    "age": "future",
+    "cost": {
+      "stone": 1000,
+      "energy": 300
+    },
+    "researchTime": 90,
+    "effects": {
+      "housePop": 5,
+      "bldHp": 50
+    }
+  },
+  "enlightenment": {
+    "name": "Просвещение",
+    "desc": "Научная победа. Нужно 5 технологий; 3 минуты, центр должен уцелеть",
+    "branch": "sci",
+    "age": "industrial",
+    "cost": {
+      "food": 1000,
+      "stone": 400,
+      "iron": 400
+    },
+    "researchTime": 180,
+    "effects": {},
+    "final": true
+  }
+}

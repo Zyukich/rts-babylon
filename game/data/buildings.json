@@ -1,0 +1,300 @@
+{
+  "$comment": "Здания. size — сторона в клетках, buildTime/reload — секунды, range — клетки, trains — кого обучает (id из units.json)",
+  "town_center": {
+    "name": "Центр",
+    "icon": "🏰",
+    "age": "primitive",
+    "hp": 1500,
+    "armor": 3,
+    "size": 3,
+    "cost": {
+      "wood": 300,
+      "stone": 200
+    },
+    "buildTime": 60,
+    "pop": 10,
+    "drop": [
+      "food",
+      "wood",
+      "stone",
+      "iron",
+      "gold"
+    ],
+    "trains": [
+      "villager"
+    ],
+    "attack": 5,
+    "range": 6,
+    "reload": 2
+  },
+  "house": {
+    "name": "Дом",
+    "icon": "🏠",
+    "age": "primitive",
+    "hp": 300,
+    "armor": 1,
+    "size": 2,
+    "cost": {
+      "wood": 30
+    },
+    "buildTime": 15,
+    "pop": 5
+  },
+  "farm": {
+    "name": "Поле пшеницы",
+    "icon": "🌾",
+    "age": "primitive",
+    "hp": 200,
+    "armor": 0,
+    "size": 2,
+    "cost": {
+      "wood": 50
+    },
+    "buildTime": 12
+  },
+  "pasture": {
+    "name": "Ферма",
+    "icon": "🏡",
+    "age": "primitive",
+    "hp": 500,
+    "armor": 1,
+    "size": 3,
+    "cost": {
+      "wood": 120
+    },
+    "buildTime": 25,
+    "drop": [
+      "food"
+    ],
+    "trains": [
+      "cow"
+    ]
+  },
+  "camp": {
+    "name": "Лагерь",
+    "icon": "⛺",
+    "age": "primitive",
+    "hp": 400,
+    "armor": 1,
+    "size": 2,
+    "cost": {
+      "wood": 80
+    },
+    "buildTime": 20,
+    "drop": [
+      "food",
+      "wood",
+      "stone",
+      "iron",
+      "gold"
+    ]
+  },
+  "barracks": {
+    "name": "Казармы",
+    "icon": "🛡️",
+    "age": "primitive",
+    "hp": 800,
+    "armor": 2,
+    "size": 3,
+    "cost": {
+      "wood": 150
+    },
+    "buildTime": 30,
+    "trains": [
+      "clubman",
+      "hunter",
+      "spearman",
+      "scout",
+      "legionary",
+      "swordsman",
+      "musketeer",
+      "rifleman",
+      "machinegunner",
+      "bazooka",
+      "marine",
+      "laser_trooper"
+    ]
+  },
+  "archery": {
+    "name": "Стрельбище",
+    "icon": "🎯",
+    "age": "ancient",
+    "hp": 700,
+    "armor": 2,
+    "size": 3,
+    "cost": {
+      "wood": 150
+    },
+    "buildTime": 30,
+    "trains": [
+      "archer",
+      "crossbowman"
+    ]
+  },
+  "tower": {
+    "name": "Башня",
+    "icon": "🗼",
+    "age": "ancient",
+    "hp": 700,
+    "armor": 4,
+    "size": 1,
+    "cost": {
+      "wood": 25,
+      "stone": 100
+    },
+    "buildTime": 25,
+    "attack": 6,
+    "range": 6,
+    "reload": 2,
+    "sight": 9
+  },
+  "wall": {
+    "name": "Стена",
+    "icon": "🧱",
+    "age": "primitive",
+    "hp": 400,
+    "armor": 6,
+    "size": 1,
+    "cost": {
+      "stone": 5
+    },
+    "buildTime": 4
+  },
+  "gate": {
+    "name": "Ворота",
+    "icon": "🚪",
+    "age": "primitive",
+    "hp": 600,
+    "armor": 6,
+    "size": 1,
+    "cost": {
+      "stone": 30
+    },
+    "buildTime": 12
+  },
+  "market": {
+    "name": "Рынок",
+    "icon": "⚖️",
+    "age": "ancient",
+    "hp": 800,
+    "armor": 2,
+    "size": 3,
+    "cost": {
+      "wood": 175
+    },
+    "buildTime": 30,
+    "trains": [
+      "trader"
+    ]
+  },
+  "stable": {
+    "name": "Конюшня",
+    "icon": "🐴",
+    "age": "medieval",
+    "hp": 800,
+    "armor": 2,
+    "size": 3,
+    "cost": {
+      "wood": 150,
+      "stone": 50
+    },
+    "buildTime": 30,
+    "trains": [
+      "horseman",
+      "knight",
+      "cuirassier"
+    ]
+  },
+  "workshop": {
+    "name": "Мастерская",
+    "icon": "⚒️",
+    "age": "medieval",
+    "hp": 800,
+    "armor": 2,
+    "size": 3,
+    "cost": {
+      "wood": 200,
+      "iron": 50
+    },
+    "buildTime": 40,
+    "trains": [
+      "ram",
+      "cannon",
+      "artillery"
+    ]
+  },
+  "factory": {
+    "name": "Завод",
+    "icon": "🏗️",
+    "age": "mechanized",
+    "hp": 1200,
+    "armor": 4,
+    "size": 3,
+    "cost": {
+      "wood": 300,
+      "stone": 300,
+      "iron": 200
+    },
+    "buildTime": 45,
+    "trains": [
+      "aa_gun",
+      "sam",
+      "tank",
+      "apc",
+      "mlrs",
+      "mech",
+      "railgun"
+    ]
+  },
+  "airfield": {
+    "name": "Аэродром",
+    "icon": "🛫",
+    "age": "mechanized",
+    "hp": 1000,
+    "armor": 3,
+    "size": 3,
+    "cost": {
+      "stone": 400,
+      "iron": 200,
+      "gold": 150
+    },
+    "buildTime": 45,
+    "trains": [
+      "fighter",
+      "bomber",
+      "helicopter",
+      "jet"
+    ]
+  },
+  "drone_hub": {
+    "name": "Центр дронов",
+    "icon": "📶",
+    "age": "future",
+    "hp": 900,
+    "armor": 4,
+    "size": 2,
+    "cost": {
+      "stone": 300,
+      "iron": 200,
+      "energy": 200
+    },
+    "buildTime": 40,
+    "trains": [
+      "drone"
+    ]
+  },
+  "power_plant": {
+    "name": "Электростанция",
+    "icon": "🏭",
+    "age": "industrial",
+    "hp": 900,
+    "armor": 3,
+    "size": 2,
+    "cost": {
+      "wood": 200,
+      "stone": 200,
+      "iron": 150
+    },
+    "buildTime": 40
+  }
+}

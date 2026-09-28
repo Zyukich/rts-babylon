@@ -1,7 +1,10 @@
 {
-  "compilerOptions": {
-    "target": "ES2022", "lib": ["ES2022", "DOM"], "module": "ESNext", "moduleResolution": "bundler",
-    "strict": true, "noEmit": true, "allowImportingTsExtensions": true, "verbatimModuleSyntax": true
-  },
-  "include": ["src", "server"]
+  "files": [],
+  "references": [
+    { "path": "./.nuxt/tsconfig.app.json" },
+    { "path": "./.nuxt/tsconfig.server.json" },
+    { "path": "./.nuxt/tsconfig.shared.json" },
+    { "path": "./.nuxt/tsconfig.node.json" },
+    { "path": "./tsconfig.game.json" }
+  ]
 }
