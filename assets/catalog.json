@@ -26,6 +26,16 @@
       "url": "https://github.com/KenneyNL/Starter-Kit-FPS/archive/refs/heads/main.zip",
       "stripRoot": true,
       "license": "модели Kenney — CC0 (код набора — MIT)"
+    },
+    "quaternius-shooter": {
+      "zip": "packs/Toon Shooter Game Kit.zip",
+      "license": "CC0",
+      "site": "https://quaternius.com/packs/toonshootergamekit.html"
+    },
+    "quaternius-animals": {
+      "zip": "packs/Ultimate Animated Animal Pack.zip",
+      "license": "CC0",
+      "site": "https://quaternius.com/packs/ultimateanimatedanimals.html"
     }
   },
   "style": {
@@ -306,9 +316,53 @@
       }
     },
     "scout": {
-      "height": 1.5
+      "height": 1.5,
+      "model": "quaternius-animals:glTF/Horse.gltf",
+      "length": 1.3,
+      "anims": {
+        "idle": "Idle",
+        "walk": "Gallop",
+        "attack": "Attack_Kick",
+        "die": "Death",
+        "work": "Eating"
+      },
+      "rider": {
+        "file": "kaykit-adventurers:addons/kaykit_character_pack_adventures/Characters/gltf/Rogue.glb",
+        "anim": "Sit_Chair_Idle",
+        "bone": "Back",
+        "parts": [
+          "Rogue_ArmLeft",
+          "Rogue_ArmRight",
+          "Rogue_Body",
+          "Rogue_Head",
+          "Rogue_LegLeft",
+          "Rogue_LegRight",
+          "Rogue_Cape",
+          "Knife"
+        ],
+        "team": [
+          "Rogue_Cape"
+        ],
+        "offset": [
+          0,
+          -0.04,
+          0.14
+        ],
+        "rotate": 0,
+        "scale": 0.55
+      }
     },
-    "trader": {},
+    "trader": {
+      "model": "quaternius-animals:glTF/Donkey.gltf",
+      "length": 0.85,
+      "anims": {
+        "idle": "Idle",
+        "walk": "Walk",
+        "attack": "Attack_Headbutt",
+        "die": "Death",
+        "work": "Eating"
+      }
+    },
     "legionary": {
       "model": "kaykit-adventurers:addons/kaykit_character_pack_adventures/Characters/gltf/Knight.glb",
       "parts": [
@@ -358,28 +412,221 @@
       }
     },
     "knight": {
-      "height": 1.6
+      "height": 1.6,
+      "model": "quaternius-animals:glTF/Horse_White.gltf",
+      "length": 1.3,
+      "anims": {
+        "idle": "Idle",
+        "walk": "Gallop",
+        "attack": "Attack_Kick",
+        "die": "Death",
+        "work": "Eating"
+      },
+      "rider": {
+        "file": "kaykit-adventurers:addons/kaykit_character_pack_adventures/Characters/gltf/Knight.glb",
+        "anim": "Sit_Chair_Idle",
+        "bone": "Back",
+        "parts": [
+          "Knight_ArmLeft",
+          "Knight_ArmRight",
+          "Knight_Body",
+          "Knight_Head",
+          "Knight_LegLeft",
+          "Knight_LegRight",
+          "Knight_Cape",
+          "Knight_Helmet",
+          "1H_Sword",
+          "Badge_Shield"
+        ],
+        "team": [
+          "Knight_Cape"
+        ],
+        "offset": [
+          0,
+          -0.04,
+          0.14
+        ],
+        "rotate": 0,
+        "scale": 0.55
+      }
     },
     "horseman": {
-      "height": 1.5
+      "height": 1.5,
+      "model": "quaternius-animals:glTF/Horse.gltf",
+      "length": 1.3,
+      "anims": {
+        "idle": "Idle",
+        "walk": "Gallop",
+        "attack": "Attack_Kick",
+        "die": "Death",
+        "work": "Eating"
+      },
+      "rider": {
+        "file": "kaykit-adventurers:addons/kaykit_character_pack_adventures/Characters/gltf/Knight.glb",
+        "anim": "Sit_Chair_Idle",
+        "bone": "Back",
+        "parts": [
+          "Knight_ArmLeft",
+          "Knight_ArmRight",
+          "Knight_Body",
+          "Knight_Head",
+          "Knight_LegLeft",
+          "Knight_LegRight",
+          "Knight_Cape",
+          "1H_Sword",
+          "Round_Shield"
+        ],
+        "team": [
+          "Knight_Cape"
+        ],
+        "offset": [
+          0,
+          -0.04,
+          0.14
+        ],
+        "rotate": 0,
+        "scale": 0.55
+      }
     },
-    "cow": {},
-    "musketeer": {},
+    "cow": {
+      "model": "quaternius-animals:glTF/Cow.gltf",
+      "length": 0.9,
+      "anims": {
+        "idle": "Idle",
+        "walk": "Walk",
+        "attack": "Attack_Headbutt",
+        "die": "Death",
+        "work": "Eating"
+      }
+    },
+    "musketeer": {
+      "model": "quaternius-shooter:Characters/Character_Enemy.gltf",
+      "parts": [
+        "Character_Enemy",
+        "Character_Enemy_Head",
+        "Sniper_2"
+      ],
+      "team": [
+        "Enemy_Red"
+      ],
+      "anims": {
+        "idle": "Idle",
+        "walk": "Walk",
+        "attack": "Punch",
+        "shoot": "Idle_Shoot",
+        "die": "Death"
+      }
+    },
     "cuirassier": {
-      "height": 1.6
+      "height": 1.6,
+      "model": "quaternius-animals:glTF/Horse_White.gltf",
+      "length": 1.3,
+      "anims": {
+        "idle": "Idle",
+        "walk": "Gallop",
+        "attack": "Attack_Kick",
+        "die": "Death",
+        "work": "Eating"
+      },
+      "rider": {
+        "file": "kaykit-adventurers:addons/kaykit_character_pack_adventures/Characters/gltf/Knight.glb",
+        "anim": "Sit_Chair_Idle",
+        "bone": "Back",
+        "parts": [
+          "Knight_ArmLeft",
+          "Knight_ArmRight",
+          "Knight_Body",
+          "Knight_Head",
+          "Knight_LegLeft",
+          "Knight_LegRight",
+          "Knight_Cape",
+          "Knight_Helmet",
+          "2H_Sword"
+        ],
+        "team": [
+          "Knight_Cape"
+        ],
+        "offset": [
+          0,
+          -0.04,
+          0.14
+        ],
+        "rotate": 0,
+        "scale": 0.55
+      }
     },
     "cannon": {
       "height": 0.8
     },
-    "rifleman": {},
-    "machinegunner": {},
+    "rifleman": {
+      "model": "quaternius-shooter:Characters/Character_Soldier.gltf",
+      "parts": [
+        "Head",
+        "ShoulderPad.L",
+        "ShoulderPad.R",
+        "Body",
+        "Sniper"
+      ],
+      "team": [
+        "Character_Main",
+        "ShoulderPad.*"
+      ],
+      "anims": {
+        "idle": "Idle",
+        "walk": "Walk",
+        "attack": "Punch",
+        "shoot": "Idle_Shoot",
+        "die": "Death"
+      }
+    },
+    "machinegunner": {
+      "model": "quaternius-shooter:Characters/Character_Soldier.gltf",
+      "parts": [
+        "Head",
+        "ShoulderPad.L",
+        "ShoulderPad.R",
+        "Body",
+        "SMG"
+      ],
+      "team": [
+        "Character_Main",
+        "ShoulderPad.*"
+      ],
+      "anims": {
+        "idle": "Idle",
+        "walk": "Walk",
+        "attack": "Punch",
+        "shoot": "Idle_Shoot",
+        "die": "Death"
+      }
+    },
     "artillery": {
       "height": 0.9
     },
     "tank": {
       "height": 1.0
     },
-    "bazooka": {},
+    "bazooka": {
+      "model": "quaternius-shooter:Characters/Character_Soldier.gltf",
+      "parts": [
+        "Head",
+        "ShoulderPad.L",
+        "ShoulderPad.R",
+        "Body",
+        "RocketLauncher"
+      ],
+      "team": [
+        "Character_Main",
+        "ShoulderPad.*"
+      ],
+      "anims": {
+        "idle": "Idle",
+        "walk": "Walk",
+        "attack": "Punch",
+        "shoot": "Idle_Shoot",
+        "die": "Death"
+      }
+    },
     "aa_gun": {
       "height": 1.0
     },
@@ -389,7 +636,27 @@
     "bomber": {
       "height": 0.6
     },
-    "marine": {},
+    "marine": {
+      "model": "quaternius-shooter:Characters/Character_Soldier.gltf",
+      "parts": [
+        "Head",
+        "ShoulderPad.L",
+        "ShoulderPad.R",
+        "Body",
+        "AK"
+      ],
+      "team": [
+        "Character_Main",
+        "ShoulderPad.*"
+      ],
+      "anims": {
+        "idle": "Idle",
+        "walk": "Walk",
+        "attack": "Punch",
+        "shoot": "Idle_Shoot",
+        "die": "Death"
+      }
+    },
     "apc": {
       "height": 0.9,
       "model": "kaykit-space:addons/kaykit_space_base_bits/Assets/gltf/spacetruck.gltf",
@@ -407,7 +674,24 @@
     "helicopter": {
       "height": 0.7
     },
-    "laser_trooper": {},
+    "laser_trooper": {
+      "model": "quaternius-shooter:Characters/Character_Hazmat.gltf",
+      "parts": [
+        "Character_Hazmat",
+        "Character_Hazmat_Head",
+        "ShortCannon"
+      ],
+      "team": [
+        "Hazmat_Main"
+      ],
+      "anims": {
+        "idle": "Idle",
+        "walk": "Walk",
+        "attack": "Punch",
+        "shoot": "Idle_Shoot",
+        "die": "Death"
+      }
+    },
     "drone": {
       "height": 0.3,
       "model": "kenney-fps:models/enemy-flying.glb",

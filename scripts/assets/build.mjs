@@ -51,7 +51,7 @@ function gltfInfo(relPath) {
     try {
       const j = readGltf(abs), dir = path.dirname(abs);
       const uris = [...(j.buffers ?? []), ...(j.images ?? [])].map((x) => x.uri).filter((u) => u && !u.startsWith('data:'));
-      info = { anims: (j.animations ?? []).map((a) => a.name ?? ''), skinned: !!j.skins?.length, parts: (j.nodes ?? []).filter((n) => n.mesh !== undefined).map((n) => n.name ?? ''), missing: uris.filter((u) => !fs.existsSync(path.join(dir, decodeURIComponent(u)))) };
+      info = { anims: (j.animations ?? []).map((a) => a.name ?? ''), skinned: !!j.skins?.length, parts: (j.nodes ?? []).filter((n) => n.mesh !== undefined).map((n) => n.name ?? ''), bones: (j.skins ?? []).flatMap((sk) => sk.joints.map((i) => j.nodes[i]?.name ?? '')), materials: (j.materials ?? []).map((m) => m.name ?? ''), missing: uris.filter((u) => !fs.existsSync(path.join(dir, decodeURIComponent(u)))) };
     } catch (e) { info = { error: e.message }; }
   }
   gltfCache.set(relPath, info);
@@ -93,7 +93,7 @@ async function preparePack(id, p) {
       console.log(`${(data.length / 1e6).toFixed(1)} МБ`);
     }
   } else return err(`пак ${id}: нужен url или zip`);
-  const files = unzipSync(data, { filter: (f) => KEEP.test(f.name) && !/\/(fbx|obj|blend|previews?|screenshots?)\//i.test(f.name) });
+  const files = unzipSync(data, { filter: (f) => KEEP.test(f.name) && !/\/(fbx|obj|blend|previews?|screenshots?)\//i.test(f.name) && !/(^|\/)(__MACOSX\/|\._)/.test(f.name) }); // __MACOSX, ._файлы — мусор архиватора macOS
   fs.rmSync(dst, { recursive: true, force: true });
   for (const [name, bytes] of Object.entries(files)) {
     const inner = p.stripRoot ? name.split('/').slice(1).join('/') : name; // github-архивы: без корневой папки
@@ -149,10 +149,21 @@ function buildManifest(cat, hash) {
       anims[key] = spec;
     }
     if (u.anims && Object.keys(u.anims).length && !anims.idle && !anims.walk) { warn(`юнит ${type}: нет ни idle, ни walk — будет процедурная модель`); continue; }
-    for (const p of [...(u.parts ?? []), ...(u.team ?? [])]) // части модели: опечатка в имени — ошибка
-      if (info?.parts && !info.parts.some((n) => globRe(p).test(n))) err(`юнит ${type}: в ${file} нет части «${p}» (есть: ${info.parts.join(', ')})`);
+    const checkParts = (where, inf, f, parts = [], team = []) => { // опечатка в имени части/материала — ошибка
+      if (!inf?.parts) return;
+      for (const p of parts) if (!inf.parts.some((n) => globRe(p).test(n))) err(`${where}: в ${f} нет части «${p}» (есть: ${inf.parts.join(', ')})`);
+      for (const p of team) if (![...inf.parts, ...inf.materials].some((n) => globRe(p).test(n))) err(`${where}: в ${f} нет части или материала «${p}» (материалы: ${inf.materials.join(', ')})`);
+    };
+    checkParts(`юнит ${type}`, info, file, u.parts, u.team);
     const spec = { file, anims };
     for (const k of ['parts', 'team', 'scale', 'length', 'rotate']) if (u[k] !== undefined) spec[k] = u[k];
+    if (u.rider) { // всадник: персонаж на кости коня
+      const r = u.rider, rf = model(r.file, packs, `юнит ${type}.rider`), ri = rf && gltfInfo(rf);
+      if (info?.bones && !info.bones.includes(r.bone)) err(`юнит ${type}: у ${file} нет кости «${r.bone}» (есть: ${info.bones.slice(0, 16).join(', ')}…)`);
+      if (ri?.anims && r.anim && !ri.anims.includes(r.anim)) err(`юнит ${type}: у всадника ${rf} нет анимации «${r.anim}»`);
+      checkParts(`юнит ${type}.rider`, ri, rf, r.parts, r.team);
+      if (rf) spec.rider = { ...r, file: rf };
+    }
     man.units[type] = spec;
   }
   for (const [type, b] of Object.entries(strip(cat.buildings))) {

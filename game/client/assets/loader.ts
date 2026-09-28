@@ -3,7 +3,7 @@
 // Так сотни анимированных юнитов стоят почти как статичные. Нет манифеста или файла — остаются процедурные модели.
 import '@babylonjs/loaders/glTF';
 import { ANIM_FRAMES, UNIT_HEIGHT } from '../config/visual.ts';
-import { SceneLoader, Mesh, VertexData, Vector3, Texture, Color3, MultiMaterial, type Scene, type AbstractMesh, type AnimationGroup, type AssetContainer, type Material } from '@babylonjs/core';
+import { SceneLoader, Mesh, TransformNode, VertexData, Vector3, Texture, Color3, MultiMaterial, type Scene, type AbstractMesh, type AnimationGroup, type AssetContainer, type Material } from '@babylonjs/core';
 
 export interface LayerLike { mesh: Mesh; begin(): void; add(x: number, y: number, z: number, sx: number, sy: number, sz: number, col?: number[], yaw?: number): void; end(): void; }
 export type AnimKey = 'idle' | 'walk' | 'attack' | 'shoot' | 'work' | 'die';
@@ -29,7 +29,10 @@ export interface Manifest {
 
 /** Юнит в манифесте. parts — какие части модели оставить (шаблоны имён, * — любые символы), team — какие из них в цвет игрока.
  *  Без anims — статичная модель (техника). length — длина по земле в клетках (для техники), иначе рост = unitHeight × scale. rotate — поворот, градусы */
-export interface UnitSpec { file: string; anims: Partial<Record<AnimKey, AnimRef>>; parts?: string[]; team?: string[]; scale?: number; length?: number; rotate?: number }
+export interface UnitSpec { file: string; anims: Partial<Record<AnimKey, AnimRef>>; parts?: string[]; team?: string[]; scale?: number; length?: number; rotate?: number; rider?: RiderSpec }
+/** Всадник: персонаж в позе anim, едет вместе с костью bone модели (коня).
+ *  offset — сдвиг от кости в долях длины коня [вправо, вверх, вперёд]; scale — рост всадника в долях длины коня; rotate — довернуть, градусы */
+export interface RiderSpec { file: string; anim?: string; bone: string; parts?: string[]; team?: string[]; offset?: [number, number, number]; rotate?: number; scale?: number }
 
 export const ASSETS_ROOT = '/assets/';
 export async function fetchManifest(): Promise<Manifest | null> {
@@ -171,10 +174,57 @@ async function loadUnit(scene: Scene, spec: UnitSpec, libs: Map<string, AssetCon
     const src = lib.animationGroups.find((g) => g.name === a.name);
     return src ? src.clone(`${a.name}_${spec.file}`, (t) => byName.get(t.name) ?? t) : null; // переносим анимацию на кости персонажа по именам
   };
-  const keep = spec.parts?.length ? glob(spec.parts) : () => true, isTeam = spec.team?.length ? glob(spec.team) : () => false;
-  const meshes = c.meshes.filter((m) => m.getTotalVertices() > 0 && (spec.parts?.length ? keep(m.name) : m.isEnabled() && m.isVisible));
-  const baseMs = meshes.filter((m) => !isTeam(m.name)), teamMs = meshes.filter((m) => isTeam(m.name));
+  // Какие части брать и какие красить: по имени меша или по имени материала (у Quaternius цвет формы — материал)
+  const pick = (all: AbstractMesh[], parts?: string[], team?: string[]) => {
+    const keep = parts?.length ? glob(parts) : null, isTeam = team?.length ? glob(team) : () => false;
+    const ms = all.filter((m) => m.getTotalVertices() > 0 && (keep ? keep(m.name) : m.isEnabled() && m.isVisible));
+    const tm = (m: AbstractMesh) => isTeam(m.name) || (!!m.material && isTeam(m.material.name));
+    return { base: ms.filter((m) => !tm(m)), team: ms.filter(tm) };
+  };
+  const own = pick(c.meshes, spec.parts, spec.team);
+  const baseMs = [...own.base], teamMs = [...own.team];
   const skinned = c.skeletons.length > 0;
+  // Всадник: грузим персонажа и сажаем на кость коня
+  let rider: { c: AssetContainer; mount: TransformNode; anim: AnimationGroup | null; bone: TransformNode | null; k: number; unit: number } | null = null;
+  const size = (ms: AbstractMesh[]) => { // габариты в текущей позе (через временный снимок)
+    const m = snapshot(scene, ms, skinned);
+    if (!m) return null;
+    const b = m.getBoundingInfo().boundingBox, r = { w: Math.max(b.maximum.x - b.minimum.x, b.maximum.z - b.minimum.z), h: b.maximum.y - b.minimum.y, y0: b.minimum.y };
+    m.dispose(false, false);
+    return r;
+  };
+  if (spec.rider) {
+    const r = spec.rider, rc = await load(r.file, scene);
+    rc.addAllToScene();
+    for (const g of rc.animationGroups) g.stop();
+    const mount = new TransformNode('mount', scene);
+    mount.rotation.y = ((r.rotate ?? 0) * Math.PI) / 180;
+    for (const m of rc.meshes) if (!m.parent) m.parent = mount; // корень персонажа (__root__) — на седло
+    const rp = pick(rc.meshes, r.parts, r.team);
+    rider = { c: rc, mount, anim: rc.animationGroups.find((g) => g.name === r.anim) ?? null, bone: c.transformNodes.find((n) => n.name === r.bone) ?? null, k: 1, unit: 1 };
+    // калибровка: длина коня и рост всадника в «сырых» единицах файлов
+    for (const n of c.transformNodes) n.computeWorldMatrix(true);
+    for (const sk of c.skeletons) sk.prepare(true);
+    const horse = size(baseMs), g = rider.anim;
+    if (g) { g.start(false, 1, g.from, g.to); g.goToFrame(g.from); g.pause(); }
+    mount.computeWorldMatrix(true);
+    for (const n of rc.transformNodes) n.computeWorldMatrix(true);
+    for (const sk of rc.skeletons) sk.prepare(true);
+    const man = size([...rp.base, ...rp.team]);
+    if (horse && man) { rider.unit = horse.w; rider.k = ((r.scale ?? 0.6) * horse.w) / (man.h || 1); }
+    mount.scaling.setAll(rider.k);
+    baseMs.push(...rp.base); teamMs.push(...rp.team);
+  }
+  const poseRider = (k: number) => { // поза всадника (его анимация по кругу в такт кадрам коня) и место на кости
+    if (!rider) return;
+    const g = rider.anim, r = spec.rider!, o = r.offset ?? [0, 0, 0];
+    if (g) { g.start(false, 1, g.from, g.to); g.goToFrame(g.from + (g.to - g.from) * k); g.pause(); }
+    const at = rider.bone ? rider.bone.getAbsolutePosition() : Vector3.Zero();
+    rider.mount.position.set(at.x + o[0] * rider.unit, at.y + o[1] * rider.unit, at.z + o[2] * rider.unit);
+    rider.mount.computeWorldMatrix(true);
+    for (const n of rider.c.transformNodes) n.computeWorldMatrix(true);
+    for (const sk of rider.c.skeletons) sk.prepare(true);
+  };
   const out: Partial<Record<AnimKey, Baked[]>> = {}, durs: Partial<Record<AnimKey, number>> = {};
   let norm: number[] | null = null;
   const rot = ((spec.rotate ?? 0) * Math.PI) / 180;
@@ -194,6 +244,7 @@ async function loadUnit(scene: Scene, spec: UnitSpec, libs: Map<string, AssetCon
   const keys = Object.keys(spec.anims) as AnimKey[];
   if (!keys.length) { // статичная модель: одна поза на все случаи
     for (const n of c.transformNodes) n.computeWorldMatrix(true);
+    poseRider(0);
     const f = bake();
     if (f) { out.idle = [f]; durs.idle = 1; }
   }
@@ -209,12 +260,14 @@ async function loadUnit(scene: Scene, spec: UnitSpec, libs: Map<string, AssetCon
       g.pause();
       for (const n of c.transformNodes) n.computeWorldMatrix(true);
       for (const s of c.skeletons) s.prepare(true);
+      poseRider(k / F);
       const f = bake();
       if (f) list.push(f);
     }
     g.stop();
     if (list.length) { out[key] = list; durs[key] = Math.max(0.25, (g.to - g.from) / 60); }
   }
+  if (rider) { cleanup(rider.c); rider.mount.dispose(); }
   cleanup(c);
   return Object.keys(out).length ? { out, durs } : null;
 }
