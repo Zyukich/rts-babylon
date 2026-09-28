@@ -1,0 +1,78 @@
+{
+  "$comment": "Эпохи по порядку. cost — цена перехода В эту эпоху, transitionTime — секунды",
+  "transitionTime": 60,
+  "list": [
+    {
+      "id": "primitive",
+      "name": "Первобытная"
+    },
+    {
+      "id": "ancient",
+      "name": "Древняя",
+      "cost": {
+        "food": 500,
+        "wood": 200
+      }
+    },
+    {
+      "id": "medieval",
+      "name": "Средневековая",
+      "cost": {
+        "food": 800,
+        "stone": 200,
+        "iron": 150,
+        "gold": 100
+      }
+    },
+    {
+      "id": "imperial",
+      "name": "Имперская",
+      "cost": {
+        "food": 1200,
+        "wood": 400,
+        "iron": 300,
+        "gold": 300
+      }
+    },
+    {
+      "id": "industrial",
+      "name": "Индустриальная",
+      "cost": {
+        "food": 1600,
+        "stone": 300,
+        "iron": 500,
+        "gold": 500
+      }
+    },
+    {
+      "id": "mechanized",
+      "name": "Механизированная",
+      "cost": {
+        "food": 2000,
+        "iron": 700,
+        "gold": 600,
+        "energy": 200
+      }
+    },
+    {
+      "id": "modern",
+      "name": "Современная",
+      "cost": {
+        "food": 2500,
+        "iron": 800,
+        "gold": 800,
+        "energy": 400
+      }
+    },
+    {
+      "id": "future",
+      "name": "Футуристическая",
+      "cost": {
+        "food": 3000,
+        "iron": 1000,
+        "gold": 1000,
+        "energy": 800
+      }
+    }
+  ]
+}

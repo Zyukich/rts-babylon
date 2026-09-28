@@ -1,0 +1,25 @@
+{
+  "$comment": "Условия победы; hold — сколько секунд удерживать",
+  "names": {
+    "mil": "Военная",
+    "terr": "Территориальная",
+    "eco": "Экономическая",
+    "cult": "Культурная",
+    "sci": "Научная"
+  },
+  "territory": {
+    "sharePercent": 60,
+    "hold": 180
+  },
+  "economy": {
+    "target": 6000,
+    "hold": 120
+  },
+  "culture": {
+    "target": 550,
+    "hold": 180
+  },
+  "science": {
+    "techsRequired": 5
+  }
+}

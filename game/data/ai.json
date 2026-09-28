@@ -1,0 +1,105 @@
+{
+  "$comment": "Боты. every — как часто думает (секунды), vills — жителей, wave — размер волны атаки",
+  "levels": {
+    "easy": {
+      "name": "Лёгкий",
+      "every": 2,
+      "vills": 14,
+      "wave": 16,
+      "counters": false,
+      "towers": 0,
+      "expand": 0,
+      "walls": false,
+      "retreat": false,
+      "defendVills": false,
+      "raid": false
+    },
+    "normal": {
+      "name": "Средний",
+      "every": 1,
+      "vills": 22,
+      "wave": 12,
+      "counters": true,
+      "towers": 1,
+      "expand": 1,
+      "walls": false,
+      "retreat": false,
+      "defendVills": true,
+      "raid": false
+    },
+    "hard": {
+      "name": "Сложный",
+      "every": 0.5,
+      "vills": 30,
+      "wave": 20,
+      "counters": true,
+      "towers": 2,
+      "expand": 1,
+      "walls": true,
+      "retreat": true,
+      "defendVills": true,
+      "raid": true
+    }
+  },
+  "personalities": [
+    "mil",
+    "eco",
+    "civ",
+    "sci"
+  ],
+  "counters": {
+    "armor": [
+      "mech",
+      "laser_trooper",
+      "helicopter",
+      "bazooka",
+      "bomber"
+    ],
+    "air": [
+      "jet",
+      "sam",
+      "fighter",
+      "aa_gun"
+    ],
+    "cavalry": [
+      "machinegunner",
+      "rifleman",
+      "musketeer",
+      "spearman"
+    ],
+    "infantry": [
+      "machinegunner",
+      "rifleman",
+      "musketeer",
+      "crossbowman",
+      "archer",
+      "hunter"
+    ],
+    "spear": [
+      "legionary",
+      "archer",
+      "swordsman"
+    ],
+    "ranged": [
+      "cuirassier",
+      "knight",
+      "horseman",
+      "scout",
+      "swordsman",
+      "clubman"
+    ],
+    "siege": [
+      "knight",
+      "horseman",
+      "scout",
+      "swordsman",
+      "clubman"
+    ]
+  },
+  "regionValue": {
+    "iron": 3,
+    "quarry": 2,
+    "plains": 1,
+    "forest": 1
+  }
+}

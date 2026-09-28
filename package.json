@@ -2,25 +2,33 @@
   "name": "epohi",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "demo": "node --experimental-strip-types --no-warnings src/demo.ts",
-    "server": "node --experimental-strip-types --no-warnings server/server.ts",
-    "predev": "node scripts/fetch-assets.mjs --if-missing",
-    "assets": "node scripts/fetch-assets.mjs",
-    "typecheck": "tsc -p .",
-    "test": "npm run typecheck && npm run demo"
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "predev": "node scripts/assets/build.mjs --if-missing",
+    "assets": "node scripts/assets/build.mjs",
+    "assets:check": "node scripts/assets/build.mjs --check",
+    "assets:list": "node scripts/assets/build.mjs --list",
+    "server": "node --experimental-strip-types --no-warnings game/server/index.ts",
+    "demo": "node --experimental-strip-types --no-warnings scripts/demo.ts",
+    "typecheck": "tsc -p tsconfig.game.json && nuxt typecheck",
+    "test": "vitest run",
+    "check": "npm run typecheck && npm test && npm run assets:check"
   },
   "dependencies": {
     "@babylonjs/core": "^8.0.0",
-    "ws": "^8.18.0",
     "@babylonjs/loaders": "^8.0.0",
-    "@babylonjs/materials": "^8.0.0"
+    "@babylonjs/materials": "^8.0.0",
+    "nuxt": "^4.5.2",
+    "vue": "^3.5.43",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
-    "vite": "^6.0.0",
-    "typescript": "^5.6.0",
     "@types/ws": "^8.5.0",
-    "fflate": "^0.8.2"
+    "fflate": "^0.8.2",
+    "typescript": "^5.6.0",
+    "vitest": "^5.0.2",
+    "vue-tsc": "^3.3.11"
   }
 }

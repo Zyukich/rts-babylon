@@ -8,5 +8,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
       - run: npm ci
-      - run: npm run typecheck
-      - run: npm run demo   # headless-матч дважды + сверка хешей (детерминизм)
+      - run: npm run typecheck      # game/ + Nuxt
+      - run: npm test               # детерминизм, фаззинг, эксплойты, механики, данные, сеть
+      - run: npm run assets:check   # каталог ассетов без скачивания
+      - run: npm run build          # Nuxt собирается (без ассетов — процедурные модели)

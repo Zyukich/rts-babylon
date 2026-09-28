@@ -1,0 +1,85 @@
+{
+  "$comment": "Экономика. Времена — секунды. market.basePrice — цена 100 единиц в золоте; trade: золото за рейс = дистанция² / goldDivisor",
+  "resources": {
+    "food": {
+      "amountPerTile": 150
+    },
+    "wood": {
+      "amountPerTile": 100
+    },
+    "stone": {
+      "amountPerTile": 300
+    },
+    "iron": {
+      "amountPerTile": 300
+    },
+    "gold": {
+      "amountPerTile": 400
+    },
+    "energy": {
+      "amountPerTile": 0
+    }
+  },
+  "startResources": {
+    "std": {
+      "food": 200,
+      "wood": 200,
+      "stone": 100,
+      "iron": 0,
+      "gold": 0,
+      "energy": 0
+    },
+    "high": {
+      "food": 1000,
+      "wood": 1000,
+      "stone": 500,
+      "iron": 300,
+      "gold": 200,
+      "energy": 100
+    },
+    "max": {
+      "food": 5000,
+      "wood": 5000,
+      "stone": 3000,
+      "iron": 2000,
+      "gold": 1500,
+      "energy": 500
+    }
+  },
+  "gatherTime": 0.8,
+  "farmTime": 1,
+  "carry": 10,
+  "meatPerCow": 180,
+  "fieldReach": 3,
+  "wheat": {
+    "amountPerPlot": 150,
+    "initialPlots": 8,
+    "plotsPerSowing": 4,
+    "sowTime": 10,
+    "cost": {
+      "wood": 60
+    }
+  },
+  "populationMax": 200,
+  "queueMax": 5,
+  "market": {
+    "basePrice": {
+      "food": 100,
+      "wood": 100,
+      "stone": 130,
+      "iron": 150,
+      "energy": 120
+    },
+    "step": 6,
+    "min": 25,
+    "max": 400,
+    "sellFeePercent": 25
+  },
+  "trade": {
+    "minDistance": 12,
+    "goldDivisor": 30,
+    "foreignPercent": 150
+  },
+  "energyPerSecond": 1,
+  "droneCap": 12
+}

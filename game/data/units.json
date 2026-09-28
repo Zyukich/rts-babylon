@@ -1,0 +1,779 @@
+{
+  "$comment": "Юниты. range/splash/sight — клетки, reload/trainTime — секунды, speed — клеток в секунду, bonus — % урона по классу цели (100 = обычный). Подробно — game/data/README.md",
+  "villager": {
+    "name": "Житель",
+    "icon": "🧑‍🌾",
+    "class": "worker",
+    "age": "primitive",
+    "hp": 25,
+    "attack": 3,
+    "armor": 0,
+    "range": 1.5,
+    "reload": 1.5,
+    "speed": 1.2,
+    "sight": 6,
+    "cost": {
+      "food": 50
+    },
+    "trainTime": 13
+  },
+  "clubman": {
+    "name": "Дубинщик",
+    "icon": "🪓",
+    "class": "infantry",
+    "age": "primitive",
+    "hp": 40,
+    "attack": 5,
+    "armor": 1,
+    "range": 1.5,
+    "reload": 1.5,
+    "speed": 1.35,
+    "sight": 6,
+    "cost": {
+      "food": 50,
+      "wood": 10
+    },
+    "trainTime": 15,
+    "bonus": {
+      "building": 200
+    }
+  },
+  "spearman": {
+    "name": "Копейщик",
+    "icon": "🔱",
+    "class": "spear",
+    "age": "ancient",
+    "hp": 45,
+    "attack": 4,
+    "armor": 1,
+    "range": 1.5,
+    "reload": 1.5,
+    "speed": 1.35,
+    "sight": 6,
+    "cost": {
+      "food": 40,
+      "wood": 30
+    },
+    "trainTime": 15,
+    "bonus": {
+      "cavalry": 300
+    }
+  },
+  "archer": {
+    "name": "Лучник",
+    "icon": "🏹",
+    "class": "ranged",
+    "age": "ancient",
+    "hp": 30,
+    "attack": 5,
+    "armor": 0,
+    "range": 5,
+    "reload": 2,
+    "speed": 1.35,
+    "sight": 8,
+    "cost": {
+      "food": 20,
+      "wood": 40
+    },
+    "trainTime": 16,
+    "bonus": {
+      "infantry": 150,
+      "spear": 150
+    }
+  },
+  "swordsman": {
+    "name": "Мечник",
+    "icon": "⚔️",
+    "class": "infantry",
+    "age": "medieval",
+    "hp": 70,
+    "attack": 9,
+    "armor": 3,
+    "range": 1.5,
+    "reload": 1.5,
+    "speed": 1.35,
+    "sight": 6,
+    "cost": {
+      "food": 50,
+      "iron": 30
+    },
+    "trainTime": 18
+  },
+  "hunter": {
+    "name": "Охотник",
+    "icon": "🎯",
+    "class": "ranged",
+    "age": "primitive",
+    "hp": 30,
+    "attack": 3,
+    "armor": 0,
+    "range": 3.5,
+    "reload": 2.2,
+    "speed": 1.4,
+    "sight": 7,
+    "cost": {
+      "food": 40,
+      "wood": 20
+    },
+    "trainTime": 14,
+    "bonus": {
+      "infantry": 150
+    }
+  },
+  "scout": {
+    "name": "Разведчик",
+    "icon": "🏇",
+    "class": "cavalry",
+    "age": "ancient",
+    "hp": 55,
+    "attack": 4,
+    "armor": 0,
+    "range": 1.5,
+    "reload": 1.6,
+    "speed": 2.3,
+    "sight": 10,
+    "cost": {
+      "food": 80
+    },
+    "trainTime": 15,
+    "bonus": {
+      "worker": 200,
+      "siege": 200,
+      "trade": 250
+    }
+  },
+  "trader": {
+    "name": "Торговая повозка",
+    "icon": "🛒",
+    "class": "trade",
+    "age": "ancient",
+    "hp": 70,
+    "attack": 0,
+    "armor": 1,
+    "range": 0,
+    "reload": 3,
+    "speed": 1.5,
+    "sight": 6,
+    "cost": {
+      "food": 100,
+      "wood": 60
+    },
+    "trainTime": 20
+  },
+  "legionary": {
+    "name": "Легионер",
+    "icon": "🛡️",
+    "class": "infantry",
+    "age": "ancient",
+    "hp": 60,
+    "attack": 7,
+    "armor": 3,
+    "range": 1.5,
+    "reload": 1.5,
+    "speed": 1.3,
+    "sight": 6,
+    "cost": {
+      "food": 50,
+      "iron": 20
+    },
+    "trainTime": 17,
+    "bonus": {
+      "spear": 150
+    }
+  },
+  "crossbowman": {
+    "name": "Арбалетчик",
+    "icon": "🎯",
+    "class": "ranged",
+    "age": "medieval",
+    "hp": 40,
+    "attack": 8,
+    "armor": 1,
+    "range": 5.5,
+    "reload": 2.8,
+    "speed": 1.25,
+    "sight": 8,
+    "cost": {
+      "food": 30,
+      "wood": 40,
+      "gold": 25
+    },
+    "trainTime": 18,
+    "bonus": {
+      "infantry": 150,
+      "cavalry": 120
+    }
+  },
+  "knight": {
+    "name": "Рыцарь",
+    "icon": "♞",
+    "class": "cavalry",
+    "age": "medieval",
+    "hp": 130,
+    "attack": 11,
+    "armor": 4,
+    "range": 1.5,
+    "reload": 1.8,
+    "speed": 1.8,
+    "sight": 7,
+    "cost": {
+      "food": 80,
+      "iron": 40,
+      "gold": 50
+    },
+    "trainTime": 24,
+    "bonus": {
+      "infantry": 150
+    }
+  },
+  "horseman": {
+    "name": "Всадник",
+    "icon": "🐎",
+    "class": "cavalry",
+    "age": "medieval",
+    "hp": 90,
+    "attack": 8,
+    "armor": 2,
+    "range": 1.5,
+    "reload": 1.8,
+    "speed": 2,
+    "sight": 7,
+    "cost": {
+      "food": 60,
+      "iron": 40
+    },
+    "trainTime": 20,
+    "bonus": {
+      "ranged": 200,
+      "worker": 150
+    }
+  },
+  "cow": {
+    "name": "Корова",
+    "icon": "🐄",
+    "class": "animal",
+    "age": "primitive",
+    "hp": 12,
+    "attack": 0,
+    "armor": 0,
+    "range": 0,
+    "reload": 3,
+    "speed": 0.45,
+    "sight": 2,
+    "cost": {
+      "food": 30
+    },
+    "trainTime": 15,
+    "animal": true
+  },
+  "musketeer": {
+    "name": "Мушкетёр",
+    "icon": "💂",
+    "class": "ranged",
+    "age": "imperial",
+    "hp": 60,
+    "attack": 14,
+    "armor": 1,
+    "range": 5,
+    "reload": 4,
+    "speed": 1.25,
+    "sight": 8,
+    "cost": {
+      "food": 60,
+      "iron": 30,
+      "gold": 20
+    },
+    "trainTime": 20,
+    "bonus": {
+      "cavalry": 150,
+      "infantry": 120
+    }
+  },
+  "cuirassier": {
+    "name": "Кирасир",
+    "icon": "🏇",
+    "class": "cavalry",
+    "age": "imperial",
+    "hp": 150,
+    "attack": 13,
+    "armor": 4,
+    "range": 1.5,
+    "reload": 1.8,
+    "speed": 1.9,
+    "sight": 7,
+    "cost": {
+      "food": 100,
+      "iron": 50,
+      "gold": 60
+    },
+    "trainTime": 24,
+    "bonus": {
+      "ranged": 150
+    }
+  },
+  "cannon": {
+    "name": "Пушка",
+    "icon": "💣",
+    "class": "siege",
+    "age": "imperial",
+    "hp": 120,
+    "attack": 40,
+    "armor": 2,
+    "range": 7,
+    "reload": 6,
+    "speed": 0.7,
+    "sight": 8,
+    "cost": {
+      "wood": 200,
+      "iron": 150,
+      "gold": 100
+    },
+    "trainTime": 35,
+    "bonus": {
+      "building": 300
+    }
+  },
+  "rifleman": {
+    "name": "Стрелок",
+    "icon": "🪖",
+    "class": "ranged",
+    "age": "industrial",
+    "hp": 80,
+    "attack": 16,
+    "armor": 2,
+    "range": 6,
+    "reload": 3,
+    "speed": 1.35,
+    "sight": 8,
+    "cost": {
+      "food": 70,
+      "iron": 40,
+      "gold": 20
+    },
+    "trainTime": 20,
+    "bonus": {
+      "infantry": 120,
+      "cavalry": 150
+    }
+  },
+  "machinegunner": {
+    "name": "Пулемётчик",
+    "icon": "🔫",
+    "class": "ranged",
+    "age": "industrial",
+    "hp": 90,
+    "attack": 6,
+    "armor": 2,
+    "range": 5.5,
+    "reload": 0.6,
+    "speed": 1,
+    "sight": 8,
+    "cost": {
+      "food": 80,
+      "iron": 60,
+      "energy": 20
+    },
+    "trainTime": 24,
+    "bonus": {
+      "infantry": 200,
+      "cavalry": 150
+    }
+  },
+  "artillery": {
+    "name": "Артиллерия",
+    "icon": "💥",
+    "class": "siege",
+    "age": "industrial",
+    "hp": 150,
+    "attack": 60,
+    "armor": 3,
+    "range": 9,
+    "reload": 7,
+    "speed": 0.6,
+    "sight": 9,
+    "cost": {
+      "iron": 250,
+      "gold": 100,
+      "energy": 50
+    },
+    "trainTime": 40,
+    "bonus": {
+      "building": 300
+    }
+  },
+  "tank": {
+    "name": "Танк",
+    "icon": "🚜",
+    "class": "armor",
+    "age": "mechanized",
+    "hp": 400,
+    "attack": 30,
+    "armor": 8,
+    "range": 5,
+    "reload": 3.5,
+    "speed": 1.5,
+    "sight": 8,
+    "cost": {
+      "iron": 150,
+      "gold": 100,
+      "energy": 120
+    },
+    "trainTime": 40,
+    "bonus": {
+      "infantry": 150,
+      "ranged": 150,
+      "building": 150
+    }
+  },
+  "bazooka": {
+    "name": "Гранатомётчик",
+    "icon": "🎇",
+    "class": "infantry",
+    "age": "mechanized",
+    "hp": 90,
+    "attack": 10,
+    "armor": 2,
+    "range": 4.5,
+    "reload": 3.5,
+    "speed": 1.25,
+    "sight": 8,
+    "cost": {
+      "food": 80,
+      "iron": 40,
+      "energy": 20
+    },
+    "trainTime": 22,
+    "bonus": {
+      "armor": 400,
+      "siege": 200
+    }
+  },
+  "aa_gun": {
+    "name": "Зенитка",
+    "icon": "🎆",
+    "class": "siege",
+    "age": "mechanized",
+    "hp": 150,
+    "attack": 18,
+    "armor": 3,
+    "range": 7,
+    "reload": 1.5,
+    "speed": 0.8,
+    "sight": 10,
+    "cost": {
+      "iron": 100,
+      "energy": 60
+    },
+    "trainTime": 25,
+    "bonus": {
+      "air": 300
+    },
+    "airOnly": true
+  },
+  "fighter": {
+    "name": "Истребитель",
+    "icon": "✈️",
+    "class": "air",
+    "age": "mechanized",
+    "hp": 160,
+    "attack": 14,
+    "armor": 2,
+    "range": 4,
+    "reload": 1.2,
+    "speed": 3.2,
+    "sight": 11,
+    "cost": {
+      "iron": 100,
+      "gold": 100,
+      "energy": 100
+    },
+    "trainTime": 30,
+    "bonus": {
+      "air": 300
+    },
+    "air": true
+  },
+  "bomber": {
+    "name": "Бомбардировщик",
+    "icon": "🛩️",
+    "class": "air",
+    "age": "mechanized",
+    "hp": 220,
+    "attack": 60,
+    "armor": 3,
+    "range": 1.5,
+    "reload": 8,
+    "speed": 2.5,
+    "sight": 10,
+    "cost": {
+      "iron": 120,
+      "gold": 150,
+      "energy": 150
+    },
+    "trainTime": 40,
+    "bonus": {
+      "building": 300,
+      "armor": 150,
+      "siege": 150
+    },
+    "air": true,
+    "hitsAir": false
+  },
+  "marine": {
+    "name": "Мотострелок",
+    "icon": "🪖",
+    "class": "ranged",
+    "age": "modern",
+    "hp": 110,
+    "attack": 18,
+    "armor": 3,
+    "range": 6,
+    "reload": 2.5,
+    "speed": 1.4,
+    "sight": 9,
+    "cost": {
+      "food": 90,
+      "iron": 40,
+      "energy": 20
+    },
+    "trainTime": 22,
+    "bonus": {
+      "infantry": 130,
+      "cavalry": 130
+    }
+  },
+  "apc": {
+    "name": "БТР",
+    "icon": "🚙",
+    "class": "armor",
+    "age": "modern",
+    "hp": 300,
+    "attack": 9,
+    "armor": 6,
+    "range": 4.5,
+    "reload": 0.8,
+    "speed": 2.3,
+    "sight": 9,
+    "cost": {
+      "iron": 120,
+      "gold": 60,
+      "energy": 80
+    },
+    "trainTime": 30,
+    "bonus": {
+      "infantry": 150,
+      "ranged": 150
+    }
+  },
+  "mlrs": {
+    "name": "РСЗО",
+    "icon": "🚀",
+    "class": "siege",
+    "age": "modern",
+    "hp": 180,
+    "attack": 45,
+    "armor": 3,
+    "range": 10,
+    "reload": 9,
+    "speed": 1.1,
+    "sight": 9,
+    "cost": {
+      "iron": 150,
+      "gold": 120,
+      "energy": 150
+    },
+    "trainTime": 40,
+    "bonus": {
+      "building": 200,
+      "infantry": 150,
+      "ranged": 150
+    },
+    "splash": 1.8
+  },
+  "sam": {
+    "name": "ЗРК",
+    "icon": "📡",
+    "class": "siege",
+    "age": "modern",
+    "hp": 180,
+    "attack": 40,
+    "armor": 3,
+    "range": 9,
+    "reload": 3,
+    "speed": 1.2,
+    "sight": 12,
+    "cost": {
+      "iron": 120,
+      "energy": 120
+    },
+    "trainTime": 30,
+    "bonus": {
+      "air": 300
+    },
+    "airOnly": true
+  },
+  "jet": {
+    "name": "Реактивный истребитель",
+    "icon": "🛦",
+    "class": "air",
+    "age": "modern",
+    "hp": 220,
+    "attack": 26,
+    "armor": 3,
+    "range": 5,
+    "reload": 1,
+    "speed": 4.2,
+    "sight": 12,
+    "cost": {
+      "iron": 120,
+      "gold": 150,
+      "energy": 180
+    },
+    "trainTime": 35,
+    "bonus": {
+      "air": 300
+    },
+    "air": true
+  },
+  "helicopter": {
+    "name": "Боевой вертолёт",
+    "icon": "🚁",
+    "class": "air",
+    "age": "modern",
+    "hp": 260,
+    "attack": 20,
+    "armor": 4,
+    "range": 4.5,
+    "reload": 1.4,
+    "speed": 2.6,
+    "sight": 10,
+    "cost": {
+      "iron": 150,
+      "gold": 120,
+      "energy": 150
+    },
+    "trainTime": 35,
+    "bonus": {
+      "armor": 250,
+      "siege": 150
+    },
+    "air": true,
+    "hitsAir": false
+  },
+  "laser_trooper": {
+    "name": "Лазерный пехотинец",
+    "icon": "🔆",
+    "class": "ranged",
+    "age": "future",
+    "hp": 130,
+    "attack": 22,
+    "armor": 4,
+    "range": 6.5,
+    "reload": 2,
+    "speed": 1.45,
+    "sight": 10,
+    "cost": {
+      "food": 100,
+      "gold": 40,
+      "energy": 80
+    },
+    "trainTime": 24,
+    "bonus": {
+      "infantry": 130
+    },
+    "pierce": true
+  },
+  "drone": {
+    "name": "Боевой дрон",
+    "icon": "🛸",
+    "class": "air",
+    "age": "future",
+    "hp": 60,
+    "attack": 8,
+    "armor": 1,
+    "range": 3.5,
+    "reload": 0.8,
+    "speed": 3.8,
+    "sight": 10,
+    "cost": {
+      "iron": 20,
+      "energy": 60
+    },
+    "trainTime": 12,
+    "bonus": {
+      "ranged": 130,
+      "worker": 200
+    },
+    "air": true,
+    "noPop": true
+  },
+  "mech": {
+    "name": "Боевой мех",
+    "icon": "🤖",
+    "class": "armor",
+    "age": "future",
+    "hp": 700,
+    "attack": 40,
+    "armor": 10,
+    "range": 5,
+    "reload": 2.5,
+    "speed": 1.4,
+    "sight": 10,
+    "cost": {
+      "iron": 300,
+      "gold": 200,
+      "energy": 250
+    },
+    "trainTime": 45,
+    "bonus": {
+      "armor": 150,
+      "building": 150
+    },
+    "pierce": true
+  },
+  "railgun": {
+    "name": "Рельсотрон",
+    "icon": "⚡",
+    "class": "siege",
+    "age": "future",
+    "hp": 200,
+    "attack": 120,
+    "armor": 4,
+    "range": 13,
+    "reload": 10,
+    "speed": 1,
+    "sight": 12,
+    "cost": {
+      "iron": 200,
+      "gold": 200,
+      "energy": 300
+    },
+    "trainTime": 45,
+    "bonus": {
+      "building": 200,
+      "armor": 150
+    },
+    "pierce": true
+  },
+  "ram": {
+    "name": "Таран",
+    "icon": "🪵",
+    "class": "siege",
+    "age": "medieval",
+    "hp": 150,
+    "attack": 3,
+    "armor": 5,
+    "range": 1.5,
+    "reload": 4,
+    "speed": 0.9,
+    "sight": 4,
+    "cost": {
+      "wood": 150,
+      "iron": 50
+    },
+    "trainTime": 30,
+    "bonus": {
+      "building": 1500
+    }
+  }
+}

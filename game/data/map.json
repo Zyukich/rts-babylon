@@ -1,0 +1,28 @@
+{
+  "$comment": "Генерация карты. scatter — пятна по карте по порядку (порядок важен: от него зависит случайность); terrain: 1 вода, 2 горы, 3 холм; res — ресурс. start — у каждой базы: clearRadius — расчищенная зона, place — гарантированные ресурсы (dir 0..7 — направление от базы, dist — клеток, radius — размер). starts — точки баз в долях карты",
+  "scatter": [
+    { "what": "Озёра", "terrain": 1, "count": 4, "radius": 3, "radiusSpread": 4 },
+    { "what": "Горы", "terrain": 2, "count": 4, "radius": 2, "radiusSpread": 3 },
+    { "what": "Холмы", "terrain": 3, "count": 6, "radius": 2, "radiusSpread": 3 },
+    { "what": "Леса", "res": "wood", "count": 18, "radius": 2, "radiusSpread": 4 },
+    { "what": "Камень", "res": "stone", "count": 5, "radius": 1, "radiusSpread": 2 },
+    { "what": "Железо", "res": "iron", "count": 5, "radius": 1, "radiusSpread": 2 },
+    { "what": "Золото", "res": "gold", "count": 4, "radius": 1, "radiusSpread": 2 },
+    { "what": "Ягоды", "res": "food", "count": 6, "radius": 1, "radiusSpread": 2 }
+  ],
+  "start": {
+    "clearRadius": 7,
+    "keepAway": 14,
+    "place": [
+      { "res": "wood", "dir": 0, "dist": 9, "radius": 3 },
+      { "res": "wood", "dir": 3, "dist": 9, "radius": 3 },
+      { "res": "food", "dir": 1, "dist": 5, "radius": 2 },
+      { "res": "stone", "dir": 5, "dist": 7, "radius": 2 },
+      { "res": "iron", "dir": 6, "dist": 9, "radius": 2 },
+      { "res": "gold", "dir": 2, "dist": 12, "radius": 1 }
+    ]
+  },
+  "starts": [[0.15, 0.15], [0.85, 0.85], [0.85, 0.15], [0.15, 0.85], [0.5, 0.12], [0.5, 0.88], [0.12, 0.5], [0.88, 0.5]],
+  "regionGrid": 4,
+  "regionNames": ["Северные", "Южные", "Дальние", "Старые", "Тихие", "Красные", "Золотые", "Туманные", "Высокие", "Дикие", "Светлые", "Тёмные", "Ветреные", "Серые", "Широкие", "Рыжие", "Синие", "Забытые"]
+}

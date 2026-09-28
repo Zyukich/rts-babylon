@@ -1,0 +1,47 @@
+{
+  "$comment": "Рост поселения: посёлок → … Бонусы — % за каждый уровень. grew/into — для текста хроники",
+  "gatherBonusPerLevel": 4,
+  "buildingHpBonusPerLevel": 5,
+  "levels": [
+    {
+      "name": "Посёлок",
+      "grew": "вырос",
+      "into": "",
+      "pop": 0,
+      "blds": 0,
+      "age": "primitive"
+    },
+    {
+      "name": "Деревня",
+      "grew": "выросла",
+      "into": "деревню",
+      "pop": 15,
+      "blds": 8,
+      "age": "primitive"
+    },
+    {
+      "name": "Город",
+      "grew": "вырос",
+      "into": "город",
+      "pop": 35,
+      "blds": 18,
+      "age": "ancient"
+    },
+    {
+      "name": "Столица",
+      "grew": "выросла",
+      "into": "столицу",
+      "pop": 70,
+      "blds": 30,
+      "age": "medieval"
+    },
+    {
+      "name": "Мегаполис",
+      "grew": "выросла",
+      "into": "мегаполис",
+      "pop": 120,
+      "blds": 45,
+      "age": "industrial"
+    }
+  ]
+}
