@@ -8,10 +8,10 @@ import type { GameContext } from '../context.ts';
 const STOMP = 24; // сколько юнитов одновременно приминают траву
 
 export function useBlades(ctx: GameContext) {
-  const { S } = ctx, { w } = ctx.session, { scene, cam, sun } = ctx.stage, { heightAt } = ctx.terrain, { skirtH } = ctx.skirt;
+  const { S } = ctx, { w } = ctx.session, { scene, cam, sun, eff } = ctx.stage, { heightAt } = ctx.terrain, { skirtH } = ctx.skirt;
   const fog = ctx.fog, dirtW = ctx.ground.dirtW;
   const G = makeGrass(scene, Math.max(1, Math.round((200 * S.grass) / 100)));
-  const gRad = () => Math.min(36, cam.radius * 0.8 + 9) * (S.grassDist / 100);
+  const gRad = () => Math.min(36, cam.radius * 0.8 + 9) * (eff.grassDist / 100);
   G.mat.setVector3('uSunDir', sun.direction);
   G.mat.setColor3('uBase', new Color3(PAL.grass[0] * 0.7, PAL.grass[1] * 0.7, PAL.grass[2] * 0.7)); // травинки — в цвет земли, чтобы не рябило
   G.mat.setColor3('uTip', new Color3(PAL.grassLight[0] * 1.1, PAL.grassLight[1] * 1.08, PAL.grassLight[2]));
@@ -21,7 +21,7 @@ export function useBlades(ctx: GameContext) {
   const bare = (x: number, z: number) => Math.sin(x * 0.31 + 1.3) * Math.cos(z * 0.27) + Math.sin(x * 0.09 - z * 0.13) * 0.9 + Math.sin(z * 0.51 + x * 0.07) * 0.4; // проплешины земли
 
   function rebuild() {
-    if (!S.grass) { G.mesh.isVisible = false; return; }
+    if (!eff.grass) { G.mesh.isVisible = false; gDirty = false; return; }
     const R = gRad(), cx = cam.target.x, cz = cam.target.z;
     gCx = cx; gCz = cz; gR = R; gDirty = false;
     let n = 0;

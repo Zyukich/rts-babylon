@@ -4,6 +4,7 @@ import { BUILDINGS, TICK_MS } from '../data/index.ts';
 import { hash } from '../core/world.ts';
 import { step, type Command } from '../core/sim/index.ts';
 import { createLifecycle, type GameContext, type GameOptions } from './context.ts';
+import type { Settings } from './settings.ts';
 import { useSession } from './session.ts';
 import { useStage } from './render/stage.ts';
 import { useLayers } from './render/layers.ts';
@@ -38,6 +39,8 @@ export type { HudState } from './hud/types.ts';
 export interface Game {
   /** Действие интерфейса: кнопка панели, уведомление, дипломатия, 'pause' … */
   act(action: string): void;
+  /** Применить изменённые настройки игрока на ходу (графика, звук, управление, интерфейс) */
+  applySettings(s: Settings): void;
   /** Подключить canvas миникарты (возвращает отключение) */
   attachMinimap(canvas: HTMLCanvasElement): () => void;
   /** Остановить партию и освободить всё: WebGL, слушатели, таймеры */
@@ -45,7 +48,8 @@ export interface Game {
 }
 
 export async function createGame(canvas: HTMLCanvasElement, opts: GameOptions): Promise<Game> {
-  const ctx = { opts, S: opts.settings, life: createLifecycle() } as GameContext;
+  const ctx = { opts, S: { ...opts.settings }, life: createLifecycle() } as GameContext;
+  const progress = (t: string, f: number) => opts.onProgress?.(t, Math.max(0, Math.min(1, f)));
   let alive = true;
   const dispose = () => { if (alive) { alive = false; ctx.life.dispose(); } };
   try {
@@ -61,11 +65,13 @@ export async function createGame(canvas: HTMLCanvasElement, opts: GameOptions): 
     ctx.models = useModels(ctx);
     ctx.hud = useHud(ctx);
     // ---------- настоящие модели и текстуры (если собраны: npm run assets) ----------
-    opts.onProgress?.('Загрузка моделей…');
+    progress('Строим мир', 0.05);
     const man = await fetchManifest();
-    ctx.assets = man ? await loadAssets(ctx.stage.scene, man, (m, perColor) => ctx.gfx.layer(m, null, perColor), BUILDINGS, (t) => opts.onProgress?.(`Загрузка моделей… ${t}`))
+    ctx.assets = man ? await loadAssets(ctx.stage.scene, man, (m, perColor) => ctx.gfx.layer(m, null, perColor), BUILDINGS, (t, f) => progress(t, 0.1 + f * 0.75))
       .catch((e) => { console.warn('Ассеты не загрузились, рисуем процедурно', e); return null; }) : null;
-    if (!alive) return { act() {}, attachMinimap: () => () => {}, dispose };
+    if (!alive) return { act() {}, applySettings() {}, attachMinimap: () => () => {}, dispose };
+    progress('Земля, лес и вода', 0.87);
+    await new Promise((r) => setTimeout(r, 0));
     void loadSounds(man?.sounds, ASSETS_ROOT);
     for (const l of ctx.assets?.layers ?? []) ctx.stage.shadow.addShadowCaster(l.mesh);
     ctx.ground = useGround(ctx);
@@ -85,6 +91,17 @@ export async function createGame(canvas: HTMLCanvasElement, opts: GameOptions): 
     ctx.alerts = useAlerts(ctx);
     ctx.controls = useControls(ctx);
     ctx.stage.enableSsao((m) => m === ctx.blades.mesh || m === ctx.fog.mesh || m.name === 'water' || m.name === 'sky');
+    for (const m of ctx.stage.scene.meshes) if (['g', 'skirt', 'water', 'sky'].includes(m.name)) m.freezeWorldMatrix(); // неподвижная геометрия
+    progress('Шейдеры и текстуры', 0.93);
+    let ready = false;
+    ctx.stage.scene.executeWhenReady(() => { // шейдеры собраны, текстуры загружены — ждём пару отрисованных кадров и открываем игру
+      let n = 0;
+      const obs = ctx.stage.scene.onAfterRenderObservable.add(() => {
+        if (++n < 3) return;
+        ctx.stage.scene.onAfterRenderObservable.remove(obs);
+        ready = true; progress('Готово', 1); opts.onReady?.();
+      });
+    });
 
     // ---------- цикл: симуляция 10 Гц, рендер — сколько тянет монитор ----------
     if (net) {
@@ -109,7 +126,7 @@ export async function createGame(canvas: HTMLCanvasElement, opts: GameOptions): 
         if (S.fpsLimit && now - lastFrame < 1000 / S.fpsLimit - 1) return; // ограничение FPS
         const dt = Math.min(250, now - lastFrame);
         lastFrame = now;
-        acc = ctx.hud.paused ? 0 : Math.min(acc + dt, 500);
+        acc = ctx.hud.paused || !ready ? 0 : Math.min(acc + dt, 500); // пока грузится — время стоит
         const tick = TICK_MS / speed; // скорость игры из меню
         if (!net) while (acc >= tick && w.winner < 0) { acc -= tick; doStep([...pending.splice(0), ...bots.flatMap((b) => b.think(w))]); }
         else { // шагаем только по пакетам сервера: отстали — догоняем, пакета нет — ждём
@@ -129,6 +146,7 @@ export async function createGame(canvas: HTMLCanvasElement, opts: GameOptions): 
           if (mmCanvas) minimap.draw(mmCanvas, ctx.camera.view(), colors);
         }
         ctx.camera.update(dt);
+        if (ready && !document.hidden) ctx.stage.govern(now, (what) => ctx.hud.notice(`⚙ Для плавности отключено: ${what}. Автонастройку можно выключить в настройках`));
         ctx.ents.draw(Math.min(1, acc / tick));
         ctx.hud.frame(now);
       } catch (err) {
@@ -142,6 +160,13 @@ export async function createGame(canvas: HTMLCanvasElement, opts: GameOptions): 
 
     return {
       act: (a) => ctx.hud.act(a),
+      applySettings(s) {
+        const graphicsChanged = (['renderScale', 'fxaa', 'bloom', 'vignette', 'saturation', 'shadows', 'ssao', 'autoQuality', 'grass'] as (keyof Settings)[]).some((k) => s[k] !== ctx.S[k]);
+        Object.assign(ctx.S, s);
+        setVolume((s.master / 100) * (s.sfx / 100));
+        if (graphicsChanged) ctx.stage.resetAuto(); // игрок сам выбрал графику — автоснижение начинаем заново
+        ctx.blades.dirty(); ctx.hud.touch();
+      },
       attachMinimap(cv) {
         mmCanvas = cv;
         const off = ctx.controls.attachMinimap(cv);

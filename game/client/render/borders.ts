@@ -3,7 +3,13 @@ import type { GameContext } from '../context.ts';
 
 export function useBorders(ctx: GameContext) {
   const { w, pcol } = ctx.session, { heightAt } = ctx.terrain, { L } = ctx.models, fog = ctx.fog;
+  let lastKey = '';
   function draw() {
+    let seen = 0;
+    for (let i = 0; i < fog.seen.length; i++) seen += fog.seen[i];
+    const k = `${seen}|${w.regions.map((r) => r.owner).join(',')}`;
+    if (k === lastKey) return; // границы и разведка не менялись
+    lastKey = k;
     L.border.begin();
     const col = (k: number) => { const o = w.regions[k].owner; return o >= 0 ? [...pcol(o), 1] : [0.85, 0.85, 0.8, 1]; };
     for (let y = 0; y < w.H; y++) for (let x = 0; x < w.W; x++) {

@@ -68,7 +68,7 @@ export function useControls(ctx: GameContext) {
     camera.keys.add(e.code);
     const c = e.code;
     if (c === 'F10') { e.preventDefault(); hud.act('menu'); }
-    if (c === 'KeyO') ctx.stage.sun.shadowEnabled = !ctx.stage.sun.shadowEnabled; // тени вкл/выкл, если тормозит
+    if (c === 'KeyO') ctx.stage.toggleShadows(); // тени вкл/выкл, если тормозит
     if (c === 'KeyP') ctx.stage.toggleSsao();
     if (c === 'Escape') { place.cancel(); setAmove(false); }
     if (c === 'KeyF' && sel.mine().length) setAmove(true); // F + ЛКМ — атака с движением

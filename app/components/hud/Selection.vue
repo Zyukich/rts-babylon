@@ -49,18 +49,18 @@ const hpColor = (k: number) => (k > 0.6 ? '#5cbf3a' : k > 0.3 ? '#e0b030' : '#d8
 </template>
 
 <style scoped>
-.sel { flex: 1; padding: 8px 12px; overflow: hidden; min-width: 0; }
-.pv { display: flex; gap: 14px; }
-.portrait { width: 92px; height: 92px; font-size: 56px; line-height: 92px; text-align: center; background: radial-gradient(#5a4a33, #1c160f); border: 2px solid var(--gold); border-radius: 8px; flex: none; }
-.nm { font-size: 18px; color: var(--gold3); font-weight: 600; }
-.sub { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
-.hp { width: 220px; height: 10px; background: #300; border: 1px solid #000; margin: 4px 0; }
+.sel { flex: 1; padding: calc(var(--u) * 10) calc(var(--u) * 14); font-size: calc(var(--u) * 14); overflow: hidden; min-width: 0; }
+.pv { display: flex; gap: calc(var(--u) * 14); }
+.portrait { width: calc(var(--u) * 110); height: calc(var(--u) * 110); font-size: calc(var(--u) * 66); line-height: calc(var(--u) * 110); text-align: center; background: radial-gradient(#5a4a33, #1c160f); border: calc(var(--u) * 2) solid var(--gold); border-radius: calc(var(--u) * 8); flex: none; }
+.nm { font-size: calc(var(--u) * 20); color: var(--gold3); font-weight: 600; }
+.sub { font-size: calc(var(--u) * 13); color: var(--muted); margin-bottom: calc(var(--u) * 4); }
+.hp { width: calc(var(--u) * 260); height: calc(var(--u) * 12); background: #300; border: 1px solid #000; margin: calc(var(--u) * 4) 0; }
 .hp div { height: 100%; }
-.stats { font-size: 13px; display: flex; gap: 12px; flex-wrap: wrap; }
-.slots, .grp { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
-.slot { position: relative; width: 40px; height: 40px; font-size: 22px; line-height: 40px; text-align: center; background: #2a2218; border: 1px solid var(--gold2); border-radius: 4px; cursor: pointer; }
+.stats { font-size: calc(var(--u) * 14); display: flex; gap: calc(var(--u) * 12); flex-wrap: wrap; }
+.slots, .grp { display: flex; flex-wrap: wrap; gap: calc(var(--u) * 4); margin-top: calc(var(--u) * 6); }
+.slot { position: relative; width: calc(var(--u) * 46); height: calc(var(--u) * 46); font-size: calc(var(--u) * 26); line-height: calc(var(--u) * 46); text-align: center; background: #2a2218; border: 1px solid var(--gold2); border-radius: calc(var(--u) * 4); cursor: pointer; }
 .slot:hover { border-color: #ff6a5a; }
-.pb { position: absolute; left: 0; bottom: 0; height: 4px; background: #8fc05a; }
-.slot u { position: absolute; bottom: 0; right: 2px; font: 10px sans-serif; text-decoration: none; line-height: 12px; }
-.hint { color: #a89878; font-size: 12px; line-height: 1.6; }
+.pb { position: absolute; left: 0; bottom: 0; height: calc(var(--u) * 4); background: #8fc05a; }
+.slot u { position: absolute; bottom: 0; right: calc(var(--u) * 2); font: calc(var(--u) * 11) sans-serif; text-decoration: none; line-height: calc(var(--u) * 13); }
+.hint { color: #a89878; font-size: calc(var(--u) * 13); line-height: 1.6; }
 </style>

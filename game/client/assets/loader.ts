@@ -272,7 +272,7 @@ async function loadUnit(scene: Scene, spec: UnitSpec, libs: Map<string, AssetCon
   return Object.keys(out).length ? { out, durs } : null;
 }
 
-export async function loadAssets(scene: Scene, man: Manifest, make: (m: Mesh, perColor?: boolean) => LayerLike, sizes: Record<string, { size: number }>, progress?: (text: string) => void): Promise<Assets> {
+export async function loadAssets(scene: Scene, man: Manifest, make: (m: Mesh, perColor?: boolean) => LayerLike, sizes: Record<string, { size: number }>, progress?: (text: string, frac: number) => void): Promise<Assets> {
   const A: Assets = { units: {}, udur: {}, buildings: {}, staged: {}, textures: {}, layers: [] };
   const cache = new Map<string, LayerLike>(), libs = new Map<string, AssetContainer>();
   const staticLayer = async (file: string, footprint: number) => {
@@ -284,9 +284,12 @@ export async function loadAssets(scene: Scene, man: Manifest, make: (m: Mesh, pe
     }
     return cache.get(key)!;
   };
-  const types = Object.entries(man.buildings ?? {}).filter(([t]) => sizes[t]);
+  const types = Object.entries(man.buildings ?? {}).filter(([t]) => sizes[t]), total = types.length + Object.keys(man.units ?? {}).length || 1;
+  let n = 0;
+  const tick = (text: string) => progress?.(text, n++ / total);
   for (const [i, [type, spec]] of types.entries()) {
-    progress?.(`Здания ${i + 1}/${types.length}`);
+    tick(`Здания ${i + 1}/${types.length}`);
+    await new Promise((r) => setTimeout(r, 0)); // дать браузеру перерисовать экран загрузки
     const fp = sizes[type].size * 0.95;
     if (spec.ages?.length) { // по эпохам со стадиями стройки
       const out: LayerLike[][][] = [];
@@ -313,7 +316,8 @@ export async function loadAssets(scene: Scene, man: Manifest, make: (m: Mesh, pe
   }
   const units = Object.entries(man.units ?? {});
   for (const [i, [type, spec]] of units.entries()) {
-    progress?.(`Юниты ${i + 1}/${units.length}`);
+    tick(`Юниты ${i + 1}/${units.length}`);
+    await new Promise((r) => setTimeout(r, 0));
     const got = await loadUnit(scene, spec, libs).catch((e) => { console.warn('Юнит не загрузился:', type, e); return null; });
     if (!got) continue;
     A.udur[type] = got.durs;

@@ -33,7 +33,8 @@ export interface GameOptions {
   debug?: boolean;                // боты не нападают, F2 — ресурсы, F3 — карта
   autoplay?: boolean;             // за игрока играет бот
   onHud: (s: HudState) => void;   // снимок интерфейса для Vue (~10 раз в секунду и сразу после действий)
-  onProgress?: (text: string) => void; // ход загрузки (до первого снимка)
+  onProgress?: (text: string, frac: number) => void; // ход загрузки: подпись и доля 0..1
+  onReady?: () => void;                 // всё загружено и первые кадры отрисованы — можно убирать экран загрузки
 }
 
 export function createLifecycle() {

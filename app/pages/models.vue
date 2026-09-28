@@ -42,13 +42,13 @@ watch(focus, (f) => v?.focus(f));
 </template>
 
 <style scoped>
-.side { position: fixed; top: 12px; left: 12px; bottom: 12px; margin: 0; width: 330px; max-height: none; display: flex; flex-direction: column; gap: 8px; }
-.row { display: flex; flex-wrap: wrap; gap: 4px; }
-.chip { padding: 3px 8px; border: 1px solid var(--gold2); border-radius: 4px; cursor: pointer; font-size: 13px; }
+.side { position: fixed; top: calc(var(--u) * 12); left: calc(var(--u) * 12); bottom: calc(var(--u) * 12); margin: 0; width: calc(var(--u) * 330); max-height: none; display: flex; flex-direction: column; gap: calc(var(--u) * 8); }
+.row { display: flex; flex-wrap: wrap; gap: calc(var(--u) * 4); }
+.chip { padding: calc(var(--u) * 3) calc(var(--u) * 8); border: 1px solid var(--gold2); border-radius: calc(var(--u) * 4); cursor: pointer; font-size: calc(var(--u) * 13); }
 .chip.on, .it.on { background: #3a2f20; border-color: var(--gold); color: var(--gold3); }
-.sw { width: 20px; height: 20px; border-radius: 4px; cursor: pointer; border: 2px solid transparent; }
+.sw { width: calc(var(--u) * 20); height: calc(var(--u) * 20); border-radius: calc(var(--u) * 4); cursor: pointer; border: 2px solid transparent; }
 .sw.on { border-color: #fff; }
 .list { flex: 1; overflow: auto; }
-.it { padding: 4px 6px; border: 1px solid transparent; border-radius: 4px; cursor: pointer; }
+.it { padding: calc(var(--u) * 4) calc(var(--u) * 6); border: 1px solid transparent; border-radius: calc(var(--u) * 4); cursor: pointer; }
 .it small { opacity: .55; }
 </style>

@@ -42,6 +42,6 @@ const startGame = () => conn?.start(ai.value);
 </template>
 
 <style scoped>
-.lobby { position: relative; z-index: 1; width: min(640px, 92vw); margin-top: 12vh; }
+.lobby { position: relative; z-index: 1; width: min(calc(var(--u) * 640), 92vw); margin-top: 12vh; }
 .me { text-decoration: underline; }
 </style>

@@ -11,13 +11,15 @@ import type { World, Player, Unit, Entity, Building } from './world.ts';
 export const baseMods = (): Mods => Object.fromEntries(MOD_KEYS.map((k) => [k, 0])) as Mods;
 export interface Stats { gathered: number; trained: number; kills: number; lost: number; built: number; }
 export const baseStats = (): Stats => ({ gathered: 0, trained: 0, kills: 0, lost: 0, built: 0 });
-export interface Chron { tick: number; p: number; text: string; }
+/** Запись хроники. У событий мира (p < 0): kind — вид (для значка), who — кого касается, x/y — где (клетка), until — до какого тика действует */
+export interface Chron { tick: number; p: number; text: string; kind?: string; who?: number; x?: number; y?: number; until?: number }
+export type ChronExtra = Pick<Chron, 'kind' | 'who' | 'x' | 'y' | 'until'>;
 
 
 
 export const year = (tick: number) => Math.floor(tick / 100) + 1; // 10 секунд = 1 год
-export const chron = (w: World, p: number, text: string) => {
-  w.chron.push({ tick: w.tick, p, text });
+export const chron = (w: World, p: number, text: string, extra?: ChronExtra) => {
+  w.chron.push({ tick: w.tick, p, text, ...extra });
   if (p < 0) w.fx.push({ k: 'news', owner: -1, x: 0, y: 0 }); // общее событие — всем на экран
 };
 export function once(w: World, P: Player, flag: string, text: string) { if (!P.flags[flag]) { P.flags[flag] = true; chron(w, P.id, text); } }
