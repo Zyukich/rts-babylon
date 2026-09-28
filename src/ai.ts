@@ -1,10 +1,10 @@
 // Бот. Действует только через команды, как игрок, и видит только то же, что видел бы игрок (туман войны).
 // Уровни различаются скоростью реакции и тем, какие умения включены, а не жульничеством с ресурсами.
-import { UNITS, BUILDINGS, RES, TILE, REGION_WEIGHT, FINAL_REQ, WHEAT_COST, type Res, type Cost } from './defs.ts';
+import { UNITS, BUILDINGS, RES, TILE, REGION_WEIGHT, FINAL_REQ, WHEAT_COST, FIELD_REACH, type Res, type Cost, AGE_NAMES } from './defs.ts';
 import { computeVision, canSee } from './vision.ts';
 import { type World, type Unit, type Building, type Entity, canPlace, distTo, STARTS, ally } from './world.ts';
-import type { Command } from './sim.ts';
-import { TECHS, slotsLeft, queuedTechs, type Branch } from './civ.ts';
+import { nearFarm, type Command } from './sim.ts';
+import { TECHS, slotsLeft, queuedTechs, ageCost, type Branch } from './civ.ts';
 
 export type Level = 'easy' | 'normal' | 'hard';
 export const LEVELS: Record<Level, string> = { easy: 'Лёгкий', normal: 'Средний', hard: 'Сложный' };
@@ -16,7 +16,8 @@ export const CFG = {
 const FAV: Branch[] = ['mil', 'eco', 'civ', 'sci']; // у каждого бота свой характер
 // Кем отвечать на преобладающий класс врага
 const COUNTER: Record<string, string[]> = {
-  cavalry: ['spearman'], infantry: ['archer'], spear: ['archer', 'swordsman'], ranged: ['horseman', 'swordsman', 'clubman'], siege: ['horseman', 'swordsman', 'clubman'],
+  armor: ['mech', 'laser_trooper', 'helicopter', 'bazooka', 'bomber'], air: ['jet', 'sam', 'fighter', 'aa_gun'],
+  cavalry: ['machinegunner', 'rifleman', 'musketeer', 'spearman'], infantry: ['machinegunner', 'rifleman', 'musketeer', 'crossbowman', 'archer', 'hunter'], spear: ['legionary', 'archer', 'swordsman'], ranged: ['cuirassier', 'knight', 'horseman', 'scout', 'swordsman', 'clubman'], siege: ['knight', 'horseman', 'scout', 'swordsman', 'clubman'],
 };
 const VALUE: Record<string, number> = { iron: 3, quarry: 2, plains: 1, forest: 1 }; // ценность региона для экспансии
 
@@ -34,6 +35,15 @@ function nearestRes(w: World, x: number, y: number, r: Res, p = -1): number {
   }
   return best;
 }
+// Место под поле 2×2: вплотную к своей ферме (в пределах FIELD_REACH), иначе стройку не разрешат
+function fieldSpot(w: World, p: number): [number, number] | null {
+  for (const e of w.ents.values()) if (e.kind === 'b' && e.owner === p && e.type === 'pasture') {
+    const ps = BUILDINGS.pasture.size, R = FIELD_REACH;
+    for (let y = e.ty - R - 1; y <= e.ty + ps + R - 1; y++) for (let x = e.tx - R - 1; x <= e.tx + ps + R - 1; x++)
+      if (canPlace(w, x, y, 2) && nearFarm(w, p, x, y, 2)) return [x, y];
+  }
+  return null;
+}
 function findSpot(w: World, cx: number, cy: number, s: number): [number, number] | null {
   for (let r = 0; r < 16; r++)
     for (let y = cy - r; y <= cy + r; y++)
@@ -46,6 +56,7 @@ export class Bot {
   p: number; level: Level; waveSize = 0; walled = false; gateTile = -1;
   vis: Uint8Array | null = null; seen: Uint8Array | null = null;
   mem = new Map<number, string>(); // замеченные вражеские войска: id → класс
+  peaceful = false; mkT = 0; // mkT — счётчик для редких сделок на рынке // дебаг-режим: бот развивается и обороняется, но в походы не ходит
   constructor(p: number, level: Level = 'normal') { this.p = p; this.level = level; }
 
   // Место под башню в ценном ничейном регионе недалеко от дома
@@ -84,10 +95,10 @@ export class Bot {
     const vills: Unit[] = [], army: Unit[] = [], bs: Building[] = [], foeArmy: Unit[] = [], foeVills: Unit[] = [], foeBs: Building[] = [], cows: Unit[] = [];
     for (const e of w.ents.values()) {
       if (e.kind === 'u' && UNITS[e.type].animal) { if (e.owner === p) cows.push(e); continue; } // скот — отдельно
-      if (e.owner === p) { if (e.kind === 'b') bs.push(e); else (UNITS[e.type].cls === 'worker' ? vills : army).push(e); }
+      if (e.owner === p) { if (e.kind === 'b') bs.push(e); else if (UNITS[e.type].cls !== 'trade') (UNITS[e.type].cls === 'worker' ? vills : army).push(e); } // повозки — не армия
       else if (ally(w, p, e.owner) || !canSee(w, p, this.vis, this.seen, e)) continue; // союзников не трогаем
       else if (e.kind === 'b') foeBs.push(e);
-      else (UNITS[e.type].cls === 'worker' ? foeVills : foeArmy).push(e);
+      else (UNITS[e.type].cls === 'worker' || UNITS[e.type].cls === 'trade' ? foeVills : foeArmy).push(e); // вражеские повозки — цель для рейда, как жители
     }
     for (const e of foeArmy) this.mem.set(e.id, UNITS[e.type].cls);
     for (const id of this.mem.keys()) if (!w.ents.has(id)) this.mem.delete(id);
@@ -108,13 +119,13 @@ export class Bot {
     const dir = foeHome ? [(foeHome[0] - home[0]) / len, (foeHome[1] - home[1]) / len] : [1, 0];
 
     // ---------- 1. Экономика ----------
-    const want: Record<Res, number> = P.age === 0 ? { food: 5, wood: 4, stone: 1, iron: 0 } : { food: 4, wood: 3, stone: 1, iron: 2 };
+    const want: Record<Res, number> = P.age === 0 ? { food: 5, wood: 4, stone: 1, iron: 0, gold: 0, energy: 0 } : P.age === 1 ? { food: 4, wood: 3, stone: 1, iron: 2, gold: 1, energy: 0 } : { food: 4, wood: 3, stone: 1, iron: 2, gold: 2, energy: 0 }; // энергию не добывают — её дают электростанции
     for (const r of RES) { // запасы влияют на приоритеты: избыток — меньше рук, нехватка — больше
       if (P.res[r] > 600) want[r] *= 0.2;
       else if (P.res[r] < 150 && want[r] > 0) want[r] *= 2;
     }
     if (P.res.stone > 400) want.stone = 0;
-    const cnt: Record<Res, number> = { food: 0, wood: 0, stone: 0, iron: 0 }, taken = new Set<number>();
+    const cnt: Record<Res, number> = { food: 0, wood: 0, stone: 0, iron: 0, gold: 0, energy: 0 }, taken = new Set<number>();
     for (const v of vills) {
       if (v.order.t === 'gather' && v.carryRes) cnt[v.carryRes]++;
       else if (v.order.t === 'farm') { cnt.food++; taken.add(v.order.target); }
@@ -127,8 +138,12 @@ export class Bot {
         if (f) { out.push({ p, t: 'farm', units: [v.id], target: f.id }); taken.add(f.id); cnt.food++; continue; }
         if (cows.length) { out.push({ p, t: 'attack', units: [v.id], target: cows[v.id % cows.length].id }); cnt.food++; continue; } // забить корову
       }
-      const tile = nearestRes(w, (v.x / TILE) | 0, (v.y / TILE) | 0, r, p);
-      if (tile >= 0) { out.push({ p, t: 'gather', units: [v.id], tile }); cnt[r]++; }
+      // нужного ресурса на карте нет (выработан) — берём следующий по нужде, а не стоим без дела
+      const order = [r, ...RES.filter((x) => x !== r && x !== 'energy').sort((a, b) => (cnt[a] + 1) / (want[a] || 0.5) - (cnt[b] + 1) / (want[b] || 0.5))];
+      for (const rr of order) {
+        const tile = nearestRes(w, (v.x / TILE) | 0, (v.y / TILE) | 0, rr, p);
+        if (tile >= 0) { out.push({ p, t: 'gather', units: [v.id], tile }); cnt[rr]++; break; }
+      }
     }
     // Перебрасываем добытчиков с избыточного ресурса на дефицитный
     const tot = RES.reduce((s, r) => s + want[r], 0), gath = RES.reduce((s, r) => s + cnt[r], 0);
@@ -171,6 +186,13 @@ export class Bot {
       if (!has('barracks') && vills.length >= 8) cand.push(['barracks', home]);
       const pen = bs.find((b) => b.type === 'pasture' && built(b)); // поля — вокруг фермы
       if (!has('pasture') && vills.length >= 7) cand.push(['pasture', home]);
+      // Поля: бесконечная еда. С Древней эпохи — треть жителей на полях; раньше — когда дикая еда у дома кончилась
+      const wildFood = nearestRes(w, home[0], home[1], 'food', p), wildFar = wildFood < 0 || Math.hypot((wildFood % w.W) - home[0], ((wildFood / w.W) | 0) - home[1]) > 18;
+      const farmsWant = P.age >= 1 ? Math.min(10, Math.floor(vills.length / 3)) : wildFar ? 3 : 0;
+      if (pen && count('farm') < farmsWant) {
+        const spot = fieldSpot(w, p);
+        if (spot) cand.unshift(['farm', spot]); else if (count('pasture') < 3) cand.push(['pasture', home]); // у ферм нет места — ещё одна ферма
+      }
       if (pen && !pen.queue.includes('#wheat') && pen.queue.length < 2 && afford(WHEAT_COST)) { // пшеница кончается — досеять
         let n = 0;
         for (let y = pen.ty - 3; y < pen.ty + 6; y++) for (let x = pen.tx - 3; x < pen.tx + 6; x++) { const i = x + y * w.W; if (x >= 0 && y >= 0 && x < w.W && y < w.H && w.resType[i] && w.resKind[i] === 2) n++; }
@@ -178,13 +200,14 @@ export class Bot {
       }
       if (P.age >= 1) {
         if (defTowers < cfg.towers && foeHome) cand.push(['tower', [Math.round(home[0] + dir[0] * 6), Math.round(home[1] + dir[1] * 6)]]);
-        for (const r of ['stone', 'iron'] as Res[]) { // лагерь у дальних залежей
+        for (const r of ['stone', 'iron', 'gold'] as Res[]) { // лагерь у дальних залежей
           const t = nearestRes(w, home[0], home[1], r, p);
           if (t < 0) continue;
           const [x, y] = xy(w, t);
           if (dH(x, y) > 8 && !bs.some((b) => (b.type === 'camp' || b.type === 'town_center') && Math.hypot(b.tx - x, b.ty - y) < 7)) cand.push(['camp', [x, y]]);
         }
         if (!has('archery')) cand.push(['archery', home]);
+        if (!has('market') && vills.length >= 16) cand.push(['market', home]); // рынок: продавать излишки за золото
         const exp = bs.filter((b) => b.type === 'tower' && dH(b.tx, b.ty) >= 10).length;
         if (exp < cfg.expand && afford(BUILDINGS.tower.cost)) { const s = this.expansionSpot(w, home); if (s) cand.push(['tower', s]); }
         // Стена с воротами поперёк направления на врага
@@ -204,24 +227,31 @@ export class Bot {
       }
       if (P.age >= 2) {
         if (!has('stable')) cand.push(['stable', home]);
+        if (P.age >= 4 && count('power_plant') < (P.age >= 5 ? 4 : 2)) cand.push(['power_plant', home]);
+        if (P.age >= 5 && !has('factory')) cand.push(['factory', home]);   // танки и зенитки
+        if (P.age >= 5 && !has('airfield')) cand.push(['airfield', home]); // авиация
+        if (P.age >= 7 && count('drone_hub') < 2) cand.push(['drone_hub', home]); // рой дронов // энергия для пулемётов и артиллерии
         if (this.level !== 'easy' && P.res.food > 700 && count('barracks') < 2) cand.push(['barracks', home]); // богатеем — второй поток войск
         if (!has('workshop') && (this.level === 'hard' || foeBs.filter((b) => b.type === 'tower').length >= 2)) cand.push(['workshop', home]);
       }
       const pick = cand.find(([t]) => afford(BUILDINGS[t].cost));
       if (pick) {
-        const [type, at] = pick, s = findSpot(w, at[0], at[1], BUILDINGS[type].size);
+        const [type, at] = pick, s = type === 'farm' ? at : findSpot(w, at[0], at[1], BUILDINGS[type].size); // место поля уже проверено fieldSpot
         if (s) out.push({ p, t: 'build', units: [worker.id], type, tx: s[0], ty: s[1] });
       }
     }
 
     // ---------- 4. Жители, эпохи, исследования ----------
+    // Копим на следующую эпоху (с Средневековой она дорогая): пока не хватает — без найма войск и исследований, если нет угрозы
+    const nextAge = P.age < AGE_NAMES.length - 1 ? ageCost(P) : undefined;
+    const saveAge = P.age >= 2 && !!nextAge && !P.ageing && vills.length >= 12 + 4 * P.age && !afford(nextAge) && !threats.length && army.length >= 10;
     if (tc && built(tc) && !P.ageing) {
-      if (P.age < 2 && vills.length >= (P.age === 0 ? 12 : 16)) out.push({ p, t: 'age', building: tc.id });
-      else if (tc.queue.length < 2 && vills.length < cfg.vills && afford(UNITS.villager.cost)) out.push({ p, t: 'train', building: tc.id, unit: 'villager' });
+      if (P.age < AGE_NAMES.length - 1 && vills.length >= 12 + 4 * P.age) out.push({ p, t: 'age', building: tc.id });
+      else if (tc.queue.length < 2 && vills.length < cfg.vills + 5 * Math.max(0, P.age - 2) && afford(UNITS.villager.cost)) out.push({ p, t: 'train', building: tc.id, unit: 'villager' });
     }
-    if (tc && built(tc) && this.level !== 'easy' && P.age === 2 && P.techs.length >= FINAL_REQ && !queuedTechs(w, p).length && afford(TECHS.enlightenment.cost))
+    if (tc && built(tc) && this.level !== 'easy' && P.age >= TECHS.enlightenment.age && P.techs.length >= FINAL_REQ && !queuedTechs(w, p).length && afford(TECHS.enlightenment.cost))
       out.push({ p, t: 'research', building: tc.id, tech: 'enlightenment' }); // сам идёт к научной победе
-    if (tc && built(tc) && vills.length >= 8 && !queuedTechs(w, p).length && slotsLeft(w, P) > 0) {
+    if (tc && built(tc) && vills.length >= 8 && !saveAge && !queuedTechs(w, p).length && slotsLeft(w, P) > 0) {
       const fav = FAV[p % 4];
       const opts = Object.entries(TECHS).filter(([id, t]) => t.age <= P.age && !t.final && !P.techs.includes(id) && afford(t.cost))
         .sort((a, b) => Number(b[1].branch === fav) - Number(a[1].branch === fav));
@@ -233,17 +263,44 @@ export class Bot {
     for (const c of this.mem.values()) foeCls[c] = (foeCls[c] ?? 0) + 1;
     const top = Object.entries(foeCls).sort((a, b) => b[1] - a[1])[0]?.[0];
     const counters = cfg.counters && top ? COUNTER[top] : [];
-    if (vills.length >= 10 && (P.age > 0 || army.length < 5 || threats.length)) for (const b of bs) {
-      if (!built(b) || b.queue.length >= 2 || b.type === 'town_center') continue;
+    const reserveIron = P.age >= 5 && (!has('factory') || !has('airfield')) && !threats.length; // копим железо на завод и аэродром
+    if (vills.length >= 10 && !saveAge && (P.age > 0 || army.length < 5 || threats.length)) for (const b of bs) {
+      if (!built(b) || b.queue.length >= 2 || b.type === 'town_center' || b.type === 'market') continue;
       const opts = (BUILDINGS[b.type].trains ?? []).filter((u) => UNITS[u].age <= P.age);
       if (!opts.length) continue;
-      const ok = (o: string) => afford(UNITS[o].cost) && !(o === 'ram' && count('ram') >= 3) && !(o === 'cow' && cows.length >= 3);
+      const ok = (o: string) => afford(UNITS[o].cost) && !(reserveIron && UNITS[o].cost.iron && P.res.iron < 350) && !(UNITS[o].cls === 'siege' && army.filter((u) => UNITS[u.type].cls === 'siege').length >= 4) && !(o === 'cow' && cows.length >= 3);
       const u = opts.find((o) => counters.includes(o) && ok(o)) ?? [...opts].reverse().find(ok); // контр, а если не по карману — что есть
       if (u) out.push({ p, t: 'train', building: b.id, unit: u });
     }
 
+    // ---------- 5а. Упёрлись в лимит населения — распускаем устаревших (на две эпохи и старше), место — современным войскам ----------
+    if (P.age >= 3 && P.pop >= P.popCap - 3 && P.popCap >= 150 && !threats.length) {
+      const old = army.filter((u) => UNITS[u.type].age <= P.age - 2 && u.order.t === 'idle').sort((a, b) => UNITS[a.type].age - UNITS[b.type].age).slice(0, 5);
+      if (old.length) out.push({ p, t: 'destroy', ids: old.map((u) => u.id) });
+    }
+
+    // ---------- 5б. Рынок: излишки → золото, когда оно нужно (эпоха, элитные войска) ----------
+    const mk = bs.find((b) => b.type === 'market' && built(b));
+    const noGold = nearestRes(w, home[0], home[1], 'gold', p) < 0; // жилы выработаны — золото только через рынок
+    // Порядок: 1) железо, если его нет на карте, 2) огромные излишки → золото, 3) мало золота → продаём лишнее, 4) золота много → докупаем нехватку
+    const noIron = nearestRes(w, home[0], home[1], 'iron', p) < 0;
+    const glut = (['food', 'wood', 'stone', 'iron', 'energy'] as Res[]).find((r) => P.res[r] > (r === 'energy' ? 1000 : 2500));
+    const deal = (res: Res, buy: boolean) => { if (mk && this.mkT++ % 2 === 0) out.push({ p, t: 'trade', building: mk.id, res, buy }); };
+    // Копим на эпоху, а золота с запасом — докупаем недостающее (не залезая в золото, нужное самой эпохе)
+    const lack = saveAge && nextAge ? (['food', 'wood', 'stone', 'iron', 'energy'] as Res[]).find((r) => P.res[r] < (nextAge[r] ?? 0)) : undefined;
+    if (mk && lack && P.res.gold >= (P.prices[lack] ?? 999) + (nextAge?.gold ?? 0)) deal(lack, true);
+    else if (mk && (noIron || P.age >= 4) && P.res.iron < 400 && P.res.gold >= (P.prices.iron ?? 999) + 50) deal('iron', true);
+    else if (mk && glut) deal(glut, false);
+    else if (mk && P.res.gold < (noGold || noIron ? 800 : 300)) {
+      const r = (['food', 'wood', 'stone', 'iron'] as Res[]).filter((r) => P.res[r] > (noGold || noIron ? 500 : 900) && !(r === 'iron' && noIron)).sort((a, b) => P.res[b] - P.res[a])[0];
+      if (r) deal(r, false);
+    } else if (mk && P.res.gold > 700) {
+      const r = (['iron', 'food', 'wood', 'stone'] as Res[]).filter((r) => P.res[r] < (r === 'iron' ? 400 : 250)).sort((a, b) => P.res[a] - P.res[b])[0];
+      if (r && P.res.gold >= (P.prices[r] ?? 999) + 200) deal(r, true);
+    }
+
     // ---------- 6. Походы ----------
-    if (threats.length) return out;
+    if (threats.length || this.peaceful) return out;
     const idle = army.filter((u) => u.order.t === 'idle');
     const inField = army.filter((u) => dH(u.x / TILE, u.y / TILE) > 22 && (u.order.t === 'attack' || u.order.t === 'amove'));
     if (cfg.retreat && this.waveSize && inField.length < this.waveSize * 0.35) { // разбиты — отходим, копим силы

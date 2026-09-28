@@ -10,11 +10,12 @@ import { TECHS } from '../src/civ.ts';
 
 interface Client { ws: WebSocket; name: string; slot: number; budget: number; }
 interface Room {
-  id: string; clients: Client[]; started: boolean; bots: Bot[]; inbox: Command[];
+  id: string; clients: Client[]; started: boolean; bots: Bot[]; inbox: Command[]; level: Level;
   hashes: Map<number, string>; w?: World; timer?: ReturnType<typeof setInterval>;
 }
 
 const PORT = Number(process.env.PORT ?? 8080), MAX_PLAYERS = 8, HASH_EVERY = 50, CMD_BUDGET = 30;
+const MAX_MSG = 64 * 1024, PING_MS = 15000; // команды крошечные: большее — мусор или атака
 const rooms = new Map<string, Room>();
 const out = (ws: WebSocket, m: object) => { if (ws.readyState === 1) ws.send(JSON.stringify(m)); };
 const all = (r: Room, m: object) => { const s = JSON.stringify(m); for (const c of r.clients) if (c.ws.readyState === 1) c.ws.send(s); };
@@ -31,7 +32,11 @@ function sanitize0(c: any, p: number): Command | null {
   const ids = (a: unknown) => Array.isArray(a) && a.length <= 200 && a.every(Number.isInteger);
   const ints = (...v: unknown[]) => v.every(Number.isInteger);
   switch (c.t) {
-    case 'move': case 'amove': return ids(c.units) && ints(c.x, c.y) ? { p, t: c.t, units: c.units, x: c.x, y: c.y } : null;
+    case 'move': case 'amove': {
+      if (!ids(c.units) || !ints(c.x, c.y)) return null;
+      const f = Number.isInteger(c.f) && c.f >= 1 && c.f <= 3 ? c.f : undefined; // формация
+      return f ? { p, t: c.t, units: c.units, x: c.x, y: c.y, f } : { p, t: c.t, units: c.units, x: c.x, y: c.y };
+    }
     case 'attack': case 'assist': case 'farm': return ids(c.units) && ints(c.target) ? { p, t: c.t, units: c.units, target: c.target } : null;
     case 'gather': return ids(c.units) && ints(c.tile) ? { p, t: 'gather', units: c.units, tile: c.tile } : null;
     case 'build': return ids(c.units) && Object.hasOwn(BUILDINGS, c.type) && ints(c.tx, c.ty) ? { p, t: 'build', units: c.units, type: c.type, tx: c.tx, ty: c.ty } : null;
@@ -46,12 +51,15 @@ function sanitize0(c: any, p: number): Command | null {
     case 'gate': return ints(c.building) && typeof c.open === 'boolean' ? { p, t: 'gate', building: c.building, open: c.open } : null;
     case 'sow': return ints(c.building) ? { p, t: 'sow', building: c.building } : null;
     case 'stop': return ids(c.units) ? { p, t: 'stop', units: c.units } : null;
+    case 'trade': return ints(c.building) && ['food', 'wood', 'stone', 'iron', 'energy'].includes(c.res) && typeof c.buy === 'boolean' ? { p, t: 'trade', building: c.building, res: c.res, buy: c.buy } : null;
+    case 'route': return ids(c.units) && ints(c.target) ? { p, t: 'route', units: c.units, target: c.target } : null;
   }
   return null;
 }
 
 function start(r: Room, level: Level) {
   r.started = true;
+  r.level = level;
   const n = Math.max(2, r.clients.length), seed = (Math.random() * 2 ** 31) | 0;
   r.w = createWorld(seed, n);
   for (let p = r.clients.length; p < n; p++) r.bots.push(new Bot(p, level)); // пустые места — боты
@@ -61,30 +69,45 @@ function start(r: Room, level: Level) {
   console.log(`[${r.id}] старт: ${names.join(', ')}`);
 }
 
-function tick(r: Room) {
-  const w = r.w!;
-  const cmds = [...r.inbox.splice(0), ...r.bots.flatMap((b) => b.think(w))];
-  for (const c of r.clients) c.budget = 0;
-  all(r, { type: 'tick', t: w.tick, cmds });
-  step(w, cmds);
-  if (w.tick % HASH_EVERY === 0) { r.hashes.set(w.tick, hash(w)); r.hashes.delete(w.tick - HASH_EVERY * 20); }
-  if (w.winner >= 0 || !r.clients.some((c) => c.ws.readyState === 1)) {
-    clearInterval(r.timer);
-    rooms.delete(r.id);
-    console.log(`[${r.id}] конец: ${w.winner >= 0 ? 'победил P' + w.winner : 'все вышли'}`);
-  }
+function finish(r: Room, why: string) {
+  clearInterval(r.timer);
+  rooms.delete(r.id);
+  console.log(`[${r.id}] конец: ${why}`);
 }
 
-const wss = new WebSocketServer({ port: PORT });
+function tick(r: Room) {
+  const w = r.w!;
+  try {
+    const cmds = [...r.inbox.splice(0), ...r.bots.flatMap((b) => b.think(w))];
+    for (const c of r.clients) c.budget = 0;
+    all(r, { type: 'tick', t: w.tick, cmds });
+    step(w, cmds);
+  } catch (err) { // ошибка в симуляции не должна ронять весь сервер с остальными комнатами
+    console.error(`[${r.id}] ошибка симуляции на тике ${w.tick}:`, err);
+    all(r, { type: 'error', msg: 'Ошибка на сервере, партия остановлена' });
+    return finish(r, 'ошибка симуляции');
+  }
+  if (w.tick % HASH_EVERY === 0) { r.hashes.set(w.tick, hash(w)); r.hashes.delete(w.tick - HASH_EVERY * 20); }
+  if (w.winner >= 0) finish(r, 'победил P' + w.winner);
+  else if (!r.clients.some((c) => c.ws.readyState === 1)) finish(r, 'все вышли');
+}
+
+const alive = new WeakMap<WebSocket, boolean>(); // ответил ли на последний пинг
+const wss = new WebSocketServer({ port: PORT, maxPayload: MAX_MSG });
 wss.on('connection', (ws: WebSocket) => {
   let room: Room | null = null, me: Client | null = null;
+  alive.set(ws, true);
+  ws.on('pong', () => alive.set(ws, true));
+  ws.on('error', (e) => console.warn('ws:', e.message));
   ws.on('message', (raw: unknown) => {
     let m: any;
     try { m = JSON.parse(String(raw)); } catch { return; }
+    if (!m || typeof m !== 'object') return; // JSON.parse('null') тоже «успешен»
     if (m.type === 'join' && !room) {
-      const id = String(m.room ?? '').slice(0, 32);
+      const id = String(m.room ?? '').trim().slice(0, 32);
+      if (!id) return out(ws, { type: 'error', msg: 'Пустое имя комнаты' });
       let r = rooms.get(id);
-      if (!r) { r = { id, clients: [], started: false, bots: [], inbox: [], hashes: new Map() }; rooms.set(id, r); }
+      if (!r) { r = { id, clients: [], started: false, bots: [], inbox: [], hashes: new Map(), level: 'normal' }; rooms.set(id, r); }
       if (r.started || r.clients.length >= MAX_PLAYERS) return out(ws, { type: 'error', msg: 'Игра уже идёт или комната заполнена' });
       room = r;
       me = { ws, name: String(m.name ?? 'Игрок').slice(0, 20), slot: r.clients.length, budget: 0 };
@@ -97,7 +120,7 @@ wss.on('connection', (ws: WebSocket) => {
     else if (m.type === 'cmd' && room.started && me.budget++ < CMD_BUDGET) {
       const c = sanitize(m.cmd, me.slot);
       if (c) room.inbox.push(c);
-    } else if (m.type === 'hash' && room.started) {
+    } else if (m.type === 'hash' && room.started && Number.isInteger(m.t)) {
       const h = room.hashes.get(m.t);
       if (h && h !== m.h) { out(ws, { type: 'desync', t: m.t }); console.warn(`[${room.id}] рассинхрон у ${me.name} на тике ${m.t}`); }
     }
@@ -108,7 +131,19 @@ wss.on('connection', (ws: WebSocket) => {
       room.clients.splice(room.clients.indexOf(me), 1);
       room.clients.forEach((c, i) => (c.slot = i));
       if (room.clients.length) lobby(room); else rooms.delete(room.id);
-    } else all(room, { type: 'left', name: me.name });
+    } else if (rooms.get(room.id) === room && !room.bots.some((b) => b.p === me!.slot)) {
+      room.bots.push(new Bot(me.slot, room.level)); // ушедшего игрока подхватывает бот — его команды тоже идут в общий тик
+      all(room, { type: 'left', name: me.name });
+    }
   });
 });
+
+// Пинг: оборванные соединения (без close) иначе висят до таймаута ОС
+setInterval(() => {
+  for (const ws of wss.clients) {
+    if (!alive.get(ws)) { ws.terminate(); continue; }
+    alive.set(ws, false);
+    ws.ping();
+  }
+}, PING_MS);
 console.log(`Сервер ЭПОХИ на ws://localhost:${PORT}`);

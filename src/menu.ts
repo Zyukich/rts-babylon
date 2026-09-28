@@ -34,7 +34,7 @@ function background(canvas: HTMLCanvasElement) {
   g.updateVerticesData(VertexBuffer.NormalKind, nr);
   const gm = new StandardMaterial('gm', scene); gm.specularColor = Color3.Black(); g.material = gm; g.receiveShadows = true;
 
-  const K = makeModels(scene), N = makeNature(scene, {});
+  const K = makeModels(scene), N = makeNature(scene);
   for (const m of [...Object.values(K.things).flat(), ...Object.values(K.res), ...Object.values(N)]) m?.setEnabled(false); // шаблоны
   const clone = (m: Mesh | null, parent: TransformNode) => { if (!m) return null; const c = m.clone(m.name + '_c', parent)!; c.setEnabled(true); sh.addShadowCaster(c); return c; };
   for (let i = 0; i < 70; i++) { // лес вокруг поляны
@@ -113,7 +113,7 @@ export function runMenu(onStart: (cfg: StartCfg) => void) {
   };
   const side = `<div class="mside"><div class="mtitle">ЭПОХИ</div><div class="msub">Стратегия в реальном времени</div>
     <button class="mbtn" data-go="single">⚔ Одиночная игра</button>
-    <button class="mbtn" disabled title="Скоро">🌐 Сетевая игра <small>(скоро)</small></button>
+    <button class="mbtn" data-go="net">🌐 Сетевая игра</button>
     <button class="mbtn" data-go="settings">⚙ Настройки</button>
     <div style="flex:1"></div><small style="opacity:.5">сб.23</small></div>`;
   const sel = (attr: string, v: string | number, opts: [string | number, string][]) => `<select ${attr}>${opts.map(([k, l]) => `<option value="${k}" ${String(k) === String(v) ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
@@ -121,6 +121,10 @@ export function runMenu(onStart: (cfg: StartCfg) => void) {
 
   const screens: Record<string, () => string> = {
     main: () => side,
+    net: () => side + `<div class="mpanel"><h2>Сетевая игра</h2>
+      ${row('Комната', `<input type="text" id="room" value="${Math.random().toString(36).slice(2, 8)}" maxlength="32" style="width:160px">`, 'Отправьте другу ссылку, которая появится в лобби')}
+      <p style="opacity:.75">Нужен запущенный сервер: <b>npm run server</b>. Адрес сервера и имя — в Настройках. Пустые места займут боты.</p>
+      <div class="mfoot"><button class="mbtn" data-go="main">← Назад</button><button class="mbtn" data-go="join">▶ Создать / войти</button></div></div>`,
     settings: () => {
       const tabs = [...new Set(FIELDS.map((f) => f.tab)), 'Управление'];
       const body = tab === 'Управление'
@@ -148,7 +152,7 @@ export function runMenu(onStart: (cfg: StartCfg) => void) {
         ${row('Размер карты', g('size', G.size, [[72, 'Маленькая'], [100, 'Средняя'], [128, 'Большая'], [160, 'Огромная']]))}
         ${row('Зерно карты', `<input type="number" data-g="seed" value="${G.seed}" style="width:110px"> <button class="mbtn sm" data-go="dice">🎲</button>`, '0 — каждый раз новая карта')}
         ${row('Стартовые ресурсы', g('res', G.res, [['std', 'Стандарт'], ['high', 'Много'], ['max', 'Очень много']]))}
-        ${row('Стартовая эпоха', g('age', G.age, [[0, 'Первобытная'], [1, 'Древняя']]))}
+        ${row('Стартовая эпоха', g('age', G.age, [[0, 'Первобытная'], [1, 'Древняя'], [2, 'Средневековая'], [3, 'Имперская'], [4, 'Индустриальная'], [5, 'Механизированная'], [6, 'Современная']]))}
         ${row('Лимит населения', g('pop', G.pop, [[100, '100'], [200, '200'], [300, '300']]))}
         ${row('Скорость игры', g('speed', G.speed, [[0.5, 'Медленно'], [1, 'Нормально'], [1.5, 'Быстро'], [2, 'Очень быстро']]))}
         ${row('Туман войны', g('fog', G.fog, [['normal', 'Обычный'], ['explored', 'Карта разведана'], ['none', 'Нет']]))}
@@ -180,6 +184,11 @@ export function runMenu(onStart: (cfg: StartCfg) => void) {
     if (!go) return;
     const a = go.dataset.go!;
     if (a === 'start') return start();
+    if (a === 'join') { // сетевая комната: net.ts подключится по ?room= при загрузке
+      const room = (root.querySelector('#room') as HTMLInputElement | null)?.value.trim();
+      if (room) location.href = `${location.pathname}?room=${encodeURIComponent(room)}`;
+      return;
+    }
     if (a === 'reset') { S = { ...DEFAULTS }; saveSettings(S); }
     if (a === 'dice') { G.seed = 1 + ((Math.random() * 999999) | 0); }
     else if (a !== 'reset') { cur = a; err = ''; }

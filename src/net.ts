@@ -1,6 +1,7 @@
 // Сетевой клиент: лобби + очередь тиков от сервера.
 import type { Command } from './sim.ts';
 import { loadSettings } from './settings.ts';
+import { esc } from './html.ts';
 
 export interface Net {
   you: number; seed: number; n: number; names: string[];
@@ -24,6 +25,15 @@ export function connect(): Promise<Net | null> {
   ui.textContent = 'Подключение…';
   document.body.append(ui);
 
+  const banner = (text: string, ms = 0) => { // сообщение поверх уже идущей игры; ms > 0 — само исчезнет
+    const d = document.createElement('div');
+    d.style.cssText = 'position:fixed;top:40px;width:100%;text-align:center;color:#f66;z-index:11';
+    d.textContent = text;
+    document.body.append(d);
+    if (ms) setTimeout(() => d.remove(), ms);
+  };
+  let started = false;
+
   return new Promise((resolve) => {
     const ws = new WebSocket(url);
     const net: Net = {
@@ -35,25 +45,21 @@ export function connect(): Promise<Net | null> {
     ws.onmessage = (e) => {
       const m = JSON.parse(e.data);
       if (m.type === 'lobby') {
-        ui.innerHTML = `<b>Комната ${room}</b><div>Ссылка для друга:</div><input readonly value="${location.href}" style="width:420px;padding:6px" onclick="this.select()">
-          <div>Игроки: ${m.players.map((p: string, i: number) => (i === m.you ? `<u>${p}</u>` : p)).join(', ')}</div>
+        ui.innerHTML = `<b>Комната ${esc(room)}</b><div>Ссылка для друга:</div><input readonly value="${esc(location.href)}" style="width:420px;padding:6px" onclick="this.select()">
+          <div>Игроки: ${m.players.map((p: string, i: number) => (i === m.you ? `<u>${esc(p)}</u>` : esc(p))).join(', ')}</div>
           ${m.you === 0 ? '<div>Боты на пустых местах: <select id="ai"><option value="easy">Лёгкий</option><option value="normal" selected>Средний</option><option value="hard">Сложный</option></select></div><button id="go" style="padding:10px 24px;font-size:18px">Начать</button>' : '<div>Ждём, пока хост начнёт…</div>'}`;
         ui.querySelector('#go')?.addEventListener('click', () => ws.send(JSON.stringify({ type: 'start', ai: (ui.querySelector('#ai') as HTMLSelectElement).value })));
       } else if (m.type === 'start') {
         Object.assign(net, { you: m.you, seed: m.seed, n: m.n, names: m.names });
+        started = true;
         ui.remove();
         resolve(net);
       } else if (m.type === 'tick') net.queue.push(m);
       else if (m.type === 'desync') net.onDesync?.(m.t);
-      else if (m.type === 'left') console.log(`${m.name} вышел`);
-      else if (m.type === 'error') ui.textContent = m.msg;
+      else if (m.type === 'left') banner(`${m.name} вышел — его цивилизацией управляет бот`, 6000);
+      else if (m.type === 'error') { if (started) banner(m.msg); else ui.textContent = m.msg; }
     };
-    ws.onclose = () => {
-      const d = document.createElement('div');
-      d.style.cssText = 'position:fixed;top:40px;width:100%;text-align:center;color:#f66;z-index:11';
-      d.textContent = 'Соединение с сервером потеряно';
-      document.body.append(d);
-    };
+    ws.onclose = () => banner('Соединение с сервером потеряно');
     ws.onerror = () => { ui.textContent = `Не удалось подключиться к ${url}. Сервер запущен? (npm run server)`; };
   });
 }

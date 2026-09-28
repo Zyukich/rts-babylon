@@ -7,19 +7,20 @@ import { makeGrass } from './grass.ts';
 import { AGE_TIME, MEAT, WHEAT, WHEAT_SOW, WHEAT_TIME, WHEAT_COST } from './defs.ts';
 import { researchTime } from './civ.ts';
 import { TerrainMaterial, CustomMaterial } from '@babylonjs/materials';
-import { createWorld, hash, canPlace, ally, type Entity, type Unit, type Building, type Fx } from './world.ts';
+import { createWorld, hash, canPlace, ally, walkable, type Entity, type Unit, type Building, type Fx } from './world.ts';
 import { step, fmt, nearFarm, type Command } from './sim.ts';
 import { Bot, type Level } from './ai.ts';
 import { loadSettings, COLORS, type StartCfg } from './settings.ts';
 import { setVolume } from './sfx.ts';
 import { connect } from './net.ts';
+import { esc } from './html.ts';
 import { maxHp, ageCost, TECHS, BRANCH, BRANCHES, cultureLevel, identity, slotsLeft, queuedTechs, year, NAMES } from './civ.ts';
 import { Fog } from './fog.ts';
 import { drawMinimap } from './minimap.ts';
 import { SFX } from './sfx.ts';
 import { REGION_KINDS, TERR_HOLD, WIN_NAMES, FINAL_REQ } from './defs.ts';
 const GOAL_LABEL = { eco: 'экономическая победа через', cult: 'культурная победа через', sci: 'Просвещение через' };
-import { UNITS, BUILDINGS, RES, TILE, TICK_MS, AGE_NAMES, AGE_COST, type Cost, type Cls } from './defs.ts';
+import { UNITS, BUILDINGS, RES, TILE, TICK_MS, AGE_NAMES, AGE_COST, SETTLE, MARKET_FEE, type Cost, type Cls, type Res } from './defs.ts';
 
 const S = loadSettings(); // настройки графики/звука/управления из меню
 const CFG = (window as unknown as { __epohi?: StartCfg }).__epohi; // параметры партии из меню
@@ -29,7 +30,18 @@ const ME = net ? net.you : Math.max(0, slots.findIndex((s) => s.type === 'human'
 const size = net ? 100 : CFG?.size ?? 100;
 const w = createWorld(net ? net.seed : CFG?.seed ?? ((Math.random() * 1e9) | 0), net ? net.n : slots.length, size, size,
   net ? {} : { teams: slots.map((s) => s.team), startRes: CFG?.res, startAge: CFG?.age, popMax: CFG?.pop, events: CFG?.events, victory: CFG?.victory });
-const bots = net ? [] : slots.map((s, i) => (s.type === 'human' ? null : new Bot(i, s.type as Level))).filter((b): b is Bot => !!b);
+const QS = new URLSearchParams(location.search);
+// ?debug=true — тестовый режим одиночной игры: боты не нападают, F2 — +1000 ресурсов, F3 — открыть карту
+const debug = !net && ['true', '1', ''].includes(QS.get('debug') ?? 'no');
+const autoplay = QS.has('autoplay'); // ?autoplay — за игрока играет бот: наблюдать и проверять графику/баланс
+const bots = net ? [] : slots.map((s, i) => (s.type === 'human' ? (autoplay ? new Bot(i, 'hard') : null) : new Bot(i, s.type as Level))).filter((b): b is Bot => !!b);
+if (debug) { w.debug = true; for (const b of bots) b.peaceful = true; }
+if (debug) { // значок режима с подсказкой
+  const d = document.createElement('div');
+  d.style.cssText = 'position:fixed;top:44px;left:50%;transform:translateX(-50%);z-index:5;padding:3px 10px;border-radius:6px;background:#7a1d1dcc;color:#fff;font:12px sans-serif;pointer-events:none';
+  d.textContent = 'DEBUG · боты не нападают · F2 +1000 ресурсов · F3 карта';
+  document.body.append(d);
+}
 const gameSpeed = net ? 1 : CFG?.speed ?? 1;
 const colorIdx = (o: number) => (net ? o : slots[o]?.color ?? o) % 8;
 const pcol = (o: number) => COLORS[colorIdx(o)][1];
@@ -38,6 +50,12 @@ const pending: Command[] = [];
 const send = (c: Command) => { if (net) net.send(c); else pending.push(c); };
 const $ = (id: string) => document.getElementById(id)!;
 
+// Палитра в духе моделей KayKit: мягкие, чистые, слегка пастельные цвета
+const PAL = {
+  grass: [0.4, 0.6, 0.3], grassLight: [0.5, 0.66, 0.33], dirt: [0.66, 0.53, 0.37], sand: [0.9, 0.82, 0.6],
+  rock: [0.6, 0.6, 0.62], snow: [0.95, 0.96, 0.98],
+  meadow: [0.27, 0.42, 0.14], meadowDry: [0.5, 0.46, 0.22], // перекраска фототекстуры травы
+};
 // ---------- Сцена ----------
 const canvas = $('c') as HTMLCanvasElement;
 const engine = new Engine(canvas, S.msaa);
@@ -45,11 +63,11 @@ engine.setHardwareScalingLevel(1 / S.renderScale); // разрешение ре�
 const scene = new Scene(engine);
 scene.clearColor = new Color4(0.72, 0.82, 0.92, 1); // горизонт — в цвет дымки, без резкой границы
 const hemi = new HemisphericLight('h', new Vector3(0.3, 1, 0.2), scene);
-hemi.intensity = 0.8; hemi.diffuse = new Color3(0.78, 0.87, 1); hemi.groundColor = new Color3(0.5, 0.42, 0.33); // голубое небо сверху, тёплый отсвет земли — тени цветные, не чёрные
+hemi.intensity = 0.45; hemi.diffuse = new Color3(0.8, 0.87, 1); hemi.groundColor = new Color3(0.55, 0.48, 0.38); // голубое небо сверху, тёплый отсвет земли — тени цветные, не чёрные
 scene.fogMode = Scene.FOGMODE_EXP2; scene.fogDensity = 0.007; scene.fogColor = new Color3(0.72, 0.82, 0.92); // дымка вдали
 const sun = new DirectionalLight('s', new Vector3(-0.5, -1.2, 0.4), scene);
-sun.intensity = 1.05;
-sun.diffuse = new Color3(1, 0.93, 0.8); // тёплое солнце
+sun.intensity = 1.0;
+sun.diffuse = new Color3(1, 0.95, 0.84); // тёплое солнце, как в War Selection / AoE III
 sun.position = new Vector3(w.W / 2 + 40, 80, w.H / 2 - 30);
 
 const tc0 = [...w.ents.values()].find((e): e is Building => e.kind === 'b' && e.owner === ME)!;
@@ -65,15 +83,15 @@ pipe.fxaaEnabled = S.fxaa;
 pipe.imageProcessingEnabled = true;
 pipe.imageProcessing.toneMappingEnabled = true;
 pipe.imageProcessing.toneMappingType = ImageProcessingConfiguration.TONEMAPPING_KHR_PBR_NEUTRAL; // мягче ACES, цвета не тускнеют
-pipe.imageProcessing.exposure = 1.1;
-pipe.imageProcessing.contrast = 1.18;
+pipe.imageProcessing.exposure = 1.05;
+pipe.imageProcessing.contrast = 1.1;
 pipe.imageProcessing.vignetteEnabled = S.vignette;
-pipe.imageProcessing.vignetteWeight = 1.3;
+pipe.imageProcessing.vignetteWeight = 0.5;
 pipe.imageProcessing.colorCurvesEnabled = true; // сочнее цвета — ближе к стилизации
 const curves = new ColorCurves();
 curves.globalSaturation = S.saturation;
 pipe.imageProcessing.colorCurves = curves;
-pipe.bloomEnabled = S.bloom; pipe.bloomThreshold = 0.85; pipe.bloomWeight = 0.15;
+pipe.bloomEnabled = S.bloom; pipe.bloomThreshold = 1.0; pipe.bloomWeight = 0.1; // светятся только блики и огонь, не трава
 
 const mat = (c: Color3, alpha = 1) => {
   const m = new StandardMaterial('', scene);
@@ -152,11 +170,8 @@ const hy = (x: number, z: number) => heightAt(Math.floor(x) + 0.5, Math.floor(z)
 function groundColor(x: number, z: number, y: number) {
   const tx = Math.min(w.W - 1, Math.max(0, Math.floor(x))), tz = Math.min(w.H - 1, Math.max(0, Math.floor(z)));
   const t = w.terrain[tx + tz * w.W], n = (Math.imul(tx * 7349 + tz * 3931, 2654435761) >>> 26) / 900; // лёгкий шум
-  if (y < -0.1) return [0.72, 0.66, 0.48];               // берег и дно
-  if (y > 1.95) return [0.92, 0.92, 0.95];               // снег на вершинах
-  if (t === 2 || y > 0.9) return [0.5 + n, 0.47 + n, 0.44 + n];
-  if (t === 3 || y > 0.25) return [0.56 + n, 0.62 + n, 0.34];
-  return [0.4 + n, 0.6 + n, 0.28];
+  const c = y < -0.1 ? PAL.sand : y > 1.95 ? PAL.snow : t === 2 || y > 0.9 ? PAL.rock : t === 3 || y > 0.25 ? PAL.grassLight : PAL.grass;
+  return c.map((v) => v + n);
 }
 function applyHeights(m: Mesh, off: number, color: boolean) {
   const pos = m.getVerticesData(VertexBuffer.PositionKind)!, col: number[] = [];
@@ -227,7 +242,9 @@ const L = {
   door: layer(box('door'), Color3.White(), true), // створки ворот
   smoke: layer(MeshBuilder.CreateIcoSphere('smoke', { radius: 0.5, subdivisions: 2 }, scene), new Color3(0.86, 0.86, 0.86)),
   arrow: layer(K.res.arrow, Color3.White()),
-  team: layer(MeshBuilder.CreateTorus('team', { diameter: 1, thickness: 0.07, tessellation: 20 }, scene), Color3.White(), true), // кольцо цвета игрока под настоящими моделями
+  team: layer(MeshBuilder.CreateTorus('team', { diameter: 1, thickness: 0.11, tessellation: 20 }, scene), Color3.White(), true), // кольцо цвета игрока под настоящими моделями
+  pole: layer(box('pole'), new Color3(0.36, 0.25, 0.15)),        // древко флага на здании
+  banner: layer(box('banner'), Color3.White(), true),             // полотнище цвета игрока
 };
 (L.bld.mesh.material as StandardMaterial).alpha = 0;
 (L.border.mesh.material as StandardMaterial).alpha = 0.45; // границы — лёгкой линией
@@ -270,7 +287,44 @@ if (A) for (const l of [...A.layers, ...A.natureLayers]) shadow.addShadowCaster(
 const splatTex = new DynamicTexture('splat', { width: w.W, height: w.H }, scene, false);
 const dirtW = new Float32Array(w.W * w.H), traffic = new Float32Array(w.W * w.H);
 const nearWater = (x: number, y: number) => [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => w.terrain[x + dx + (y + dy) * w.W] === 1);
+// ---------- Дороги (GDD §3: рост поселения виден на карте) ----------
+// От каждого здания — улица к ближайшей своей ратуше: поиск в ширину по проходимым клеткам (4 соседа — прямые улицы).
+// Только визуал: на симуляцию не влияет. road: 0 — нет, 1 — грунтовка, 2 — мощёная (город и выше)
+const road = new Uint8Array(w.W * w.H);
+let roadKey = '';
+function updateRoads() {
+  const key = [...w.ents.values()].filter((e) => e.kind === 'b' && e.progress >= BUILDINGS[e.type].time).map((e) => e.id + ':' + w.players[e.owner].settle).join(',');
+  if (key === roadKey) return;
+  roadKey = key;
+  road.fill(0);
+  const N = w.W * w.H, par = new Int32Array(N), q = new Int32Array(N);
+  for (const P of w.players) {
+    const mine = [...w.ents.values()].filter((e): e is Building => e.kind === 'b' && e.owner === P.id && e.progress >= BUILDINGS[e.type].time);
+    const tcs = mine.filter((b) => b.type === 'town_center');
+    if (!tcs.length) continue;
+    par.fill(-2); // -2 — не посещено, -1 — источник
+    let h = 0, t = 0;
+    const ring = (b: Building) => { const s = BUILDINGS[b.type].size, out: number[] = []; // клетки вокруг здания
+      for (let y = b.ty - 1; y <= b.ty + s; y++) for (let x = b.tx - 1; x <= b.tx + s; x++)
+        if ((x === b.tx - 1 || x === b.tx + s || y === b.ty - 1 || y === b.ty + s) && x >= 0 && y >= 0 && x < w.W && y < w.H && (x === b.tx - 1 || x === b.tx + s) !== (y === b.ty - 1 || y === b.ty + s)) out.push(x + y * w.W);
+      return out; };
+    for (const tc of tcs) for (const i of ring(tc)) if (walkable(w, i) && par[i] === -2) { par[i] = -1; q[t++] = i; }
+    while (h < t) {
+      const i = q[h++], x = i % w.W;
+      for (const j of [i - w.W, i + w.W, x > 0 ? i - 1 : -1, x < w.W - 1 ? i + 1 : -1]) if (j >= 0 && j < N && par[j] === -2 && walkable(w, j)) { par[j] = i; q[t++] = j; }
+    }
+    const kind = P.settle >= 2 ? 2 : 1;
+    for (const b of mine) {
+      if (b.type === 'town_center' || b.type === 'wall' || b.type === 'gate' || b.type === 'farm') continue;
+      let best = -1;
+      for (const i of ring(b)) if (par[i] !== -2 && (best < 0 || i < best)) best = i;
+      for (let i = best, n = 0; i >= 0 && n < 45; i = par[i], n++) road[i] = Math.max(road[i], kind);
+    }
+    if (kind === 2) for (const tc of tcs) for (const i of ring(tc)) if (par[i] !== -2) road[i] = 2; // мощёная площадь вокруг ратуши
+  }
+}
 function updateSplat() { // веса в RGB: трава, скала, песок; земля = остаток (альфу канвас портит — не используем)
+  updateRoads();
   const ctx = splatTex.getContext() as unknown as CanvasRenderingContext2D, img = ctx.createImageData(w.W, w.H), d = img.data;
   dirtW.fill(0);
   for (const e of w.ents.values()) if (e.kind === 'b' && e.type !== 'wall' && e.type !== 'gate') { // утоптанная земля у зданий
@@ -289,6 +343,8 @@ function updateSplat() { // веса в RGB: трава, скала, песок;
     if (w.resType[i] === 2) dirtW[i] = Math.max(dirtW[i], 0.5);                  // лесная подстилка
     if (w.resType[i] === 1 && w.resKind[i] === 2) dirtW[i] = Math.max(dirtW[i], 0.85); // пашня под пшеницей
     dirtW[i] = Math.max(dirtW[i], Math.min(0.85, traffic[i] / 25));              // тропы, протоптанные юнитами
+    if (road[i] === 1) dirtW[i] = Math.max(dirtW[i], 0.95);                        // грунтовая улица
+    if (road[i] === 2 && !s) { g = 0; r = 1; dirtW[i] = 0; }                        // мощёная улица — камень
     const dd = s ? 0 : dirtW[i], o = (x + (w.H - 1 - y) * w.W) * 4;
     d[o] = 255 * g * (1 - dd); d[o + 1] = 255 * r * (1 - dd); d[o + 2] = 255 * s; d[o + 3] = 255;
   }
@@ -296,6 +352,7 @@ function updateSplat() { // веса в RGB: трава, скала, песок;
   splatTex.update();
 }
 updateSplat();
+// Земля: фототекстуры (трава, земля, песок, скала), смешанные по карте весов; без текстур — плоская палитра
 if (A?.textures.grass && A.textures.rock && A.textures.sand) {
   const TT = new CustomMaterial('terrain2', scene);
   TT.AddUniform('tGrass', 'sampler2D', A.textures.grass); TT.AddUniform('tRock', 'sampler2D', A.textures.rock);
@@ -313,7 +370,10 @@ if (A?.textures.grass && A.textures.rock && A.textures.sand) {
     float rk = clamp(sp.g + smoothstep(0.2, 0.5, 1.0 - clamp(vNormalW.y, 0.0, 1.0)), 0.0, 1.0); // склоны — скала
     vec3 gr = tex2(tGrass, wp);
     float dry = smoothstep(0.25, 0.85, sin(wp.x * 0.043 + 1.3) * cos(wp.y * 0.037) * 0.5 + 0.5);
-    gr = mix(gr, gr * vec3(1.18, 1.06, 0.72), dry * 0.6);                           // пятна сухой травы
+    // Перекраска: у фототекстуры берём только рисунок (яркость), цвет задаём сами — сочная зелень с золотистыми пятнами (War Selection)
+    float gl = dot(gr, vec3(0.3, 0.59, 0.11)) / 0.33;
+    vec3 tint = mix(vec3(${PAL.meadow}), vec3(${PAL.meadowDry}), dry * 0.7);
+    gr = mix(gr, tint * clamp(gl, 0.55, 1.5), 0.8);
     vec3 dc = tex2(tDirt, wp) * mix(vec3(1.0), vec3(0.72, 0.58, 0.42), uNoDirt);
     vec3 col = (gr * sp.r + tex2(tSand, wp) * sp.b + dc * dr) / max(sp.r + sp.b + dr, 0.001);
     col = mix(col, tex2(tRock, wp * 0.8), rk);
@@ -322,10 +382,26 @@ if (A?.textures.grass && A.textures.rock && A.textures.sand) {
   TT.specularColor = Color3.Black();
   ground.material = TT;
   ground.removeVerticesData(VertexBuffer.ColorKind);
+} else { // запасной вариант без скачанных текстур: чистые цвета из палитры
+  const TT = new CustomMaterial('terrain2', scene);
+  TT.AddUniform('tSplat', 'sampler2D', splatTex); TT.AddUniform('uMap', 'vec2', new Vector2(w.W, w.H));
+  TT.Fragment_Custom_Diffuse(`
+    vec2 wp = vPositionW.xz;
+    vec3 sp = texture2D(tSplat, wp / uMap).rgb;
+    float dr = clamp(1.0 - sp.r - sp.g - sp.b, 0.0, 1.0);
+    float rk = clamp(sp.g + smoothstep(0.25, 0.5, 1.0 - clamp(vNormalW.y, 0.0, 1.0)), 0.0, 1.0); // склоны — скала
+    float spot = smoothstep(0.35, 0.65, sin(wp.x * 0.09 + 1.3) * cos(wp.y * 0.075) * 0.5 + 0.5);   // крупные пятна светлой травы
+    vec3 gr = mix(vec3(${PAL.grass}), vec3(${PAL.grassLight}), spot);
+    vec3 col = (gr * sp.r + vec3(${PAL.sand}) * sp.b + vec3(${PAL.dirt}) * dr) / max(sp.r + sp.b + dr, 0.001);
+    col = mix(col, vec3(${PAL.rock}), smoothstep(0.35, 0.65, rk));
+    diffuseColor = col;`);
+  TT.specularColor = Color3.Black();
+  ground.material = TT;
+  ground.removeVerticesData(VertexBuffer.ColorKind);
 }
-// Природа: фототекстуры коры и камня + карточки листвы (вместо «пластилина»)
+// Природа: стилизованные деревья, кусты и камни с градиентом в вершинах
 const NL: Record<string, Layer> = {};
-for (const [k, m] of Object.entries(makeNature(scene, A?.textures ?? {}))) {
+for (const [k, m] of Object.entries(makeNature(scene))) {
   NL[k] = layer(m, null);
   if (!['berry', 'soil', 'fern', 'pebbles', 'mushroom'].includes(k) && !k.startsWith('grass')) shadow.addShadowCaster(m);
 }
@@ -351,7 +427,7 @@ skirt.receiveShadows = true;
   for (let i = 0; i < pos.length; i += 3) {
     const x = pos[i] + w.W / 2, z = pos[i + 2] + w.H / 2, h = skirtH(x, z);
     pos[i + 1] = h;
-    col.push(...(h > 4.8 ? [0.93, 0.94, 0.97] : h > 2.4 ? [0.52, 0.5, 0.47] : h > 1.1 ? [0.47, 0.53, 0.33] : [0.4, 0.58, 0.28]), 1); // трава → скалы → снег
+    col.push(...(h > 4.8 ? PAL.snow : h > 2.4 ? PAL.rock : h > 1.1 ? PAL.grassLight : PAL.grass), 1); // трава → скалы → снег
   }
   skirt.updateVerticesData(VertexBuffer.PositionKind, pos);
   skirt.setVerticesData(VertexBuffer.ColorKind, col);
@@ -372,9 +448,10 @@ skirt.receiveShadows = true;
     tm2.mixTexture = mix;
     tm2.diffuseTexture1 = t(A.textures.grass); tm2.diffuseTexture2 = t(A.textures.rock); tm2.diffuseTexture3 = t(A.textures.sand);
     tm2.specularColor = Color3.Black();
+    tm2.diffuseColor = new Color3(0.78, 0.95, 0.62); // ближе к перекрашенной траве на поле — без горчицы
     skirt.material = tm2;
     skirt.removeVerticesData(VertexBuffer.ColorKind);
-  }
+  } else skirt.convertToFlatShadedMesh();
 }
 // Лес у подножия гор за краем: позиции считаем один раз
 const skirtTrees: number[] = []; // лес за краем убран: там теперь дымка, деревья торчали бы сквозь неё
@@ -391,11 +468,11 @@ const skirtTrees: number[] = []; // лес за краем убран: там т
 const PC = [[0.2, 0.45, 1], [0.9, 0.2, 0.2], [0.95, 0.8, 0.2], [0.3, 0.8, 0.3], [0.7, 0.3, 0.9], [0.2, 0.8, 0.8], [1, 0.55, 0.1], [0.9, 0.9, 0.9]];
 // Высота «корпуса» зданий (клик, полоски) и юнитов (полоски)
 const BH: Record<string, number> = { pasture: 0.6,  town_center: 3, house: 1.7, farm: 0.3, tower: 3.2, camp: 1.2, wall: 1.3, gate: 1.5, barracks: 2.2, archery: 1.9, stable: 1.9, workshop: 2.4 };
-const UH: Record<string, number> = { horseman: 1.5, ram: 1.1 };
+const UH: Record<string, number> = { horseman: 1.5, scout: 1.5, knight: 1.6, cuirassier: 1.6, ram: 1.1, cannon: 0.8, artillery: 0.9, tank: 1.0, aa_gun: 1.0, fighter: 0.5, bomber: 0.6, apc: 0.9, mlrs: 1.0, sam: 1.0, jet: 0.5, helicopter: 0.7, drone: 0.3, mech: 1.5, railgun: 1.0 };
 
 function drawTerrain() { /* рельеф статичен и построен один раз; неразведанное прячет туман */ }
 const rhash = (i: number) => Math.imul(i, 2654435761) >>> 0; // псевдослучайное по номеру клетки
-const US = 0.6, TS = 1.4; // пропорции: юниты мельче, деревья выше — как в классических RTS
+const US = 0.72, TS = 1.4; // пропорции: юниты мельче зданий, но читаются; деревья выше — как в классических RTS
 // Трава: 2–5 мелких пучков на свободную клетку, пять видов; на холмах суше. Перестраивается, только когда что-то изменилось
 function drawGrass() { /* старые «коврики» заменены травинками (drawBlades) */ }
 
@@ -403,9 +480,9 @@ function drawGrass() { /* старые «коврики» заменены тр�
 const G = makeGrass(scene, Math.max(1, Math.round((200 * S.grass) / 100)));
 const gRad = () => Math.min(36, cam.radius * 0.8 + 9) * (S.grassDist / 100);
 G.mat.setVector3('uSunDir', sun.direction);
-G.mat.setColor3('uBase', new Color3(0.16, 0.33, 0.07));
-G.mat.setColor3('uTip', new Color3(0.56, 0.8, 0.26));
-G.mat.setColor3('uDry', new Color3(0.82, 0.76, 0.36));
+G.mat.setColor3('uBase', new Color3(PAL.grass[0] * 0.7, PAL.grass[1] * 0.7, PAL.grass[2] * 0.7)); // травинки — в цвет земли, чтобы не рябило
+G.mat.setColor3('uTip', new Color3(PAL.grassLight[0] * 1.1, PAL.grassLight[1] * 1.08, PAL.grassLight[2]));
+G.mat.setColor3('uDry', new Color3(0.72, 0.74, 0.42));
 let gBuf = new Float32Array(0), gLast = -1, gCx = -1e9, gCz = -1e9, gR = 0, gDirty = true;
 const stomp = new Array(24 * 4).fill(0);
 const dirt = (x: number, z: number) => Math.sin(x * 0.31 + 1.3) * Math.cos(z * 0.27) + Math.sin(x * 0.09 - z * 0.13) * 0.9 + Math.sin(z * 0.51 + x * 0.07) * 0.4; // проплешины земли
@@ -483,10 +560,17 @@ function drawRes() {
       if (kind) NL[kind]?.add(x, y, z, s, s, s, undefined, rot);
       continue;
     }
-    if (r === 2) { // лес: ели и лиственные вперемешку, разной высоты
-      const pine = (h >>> 20) % 3 !== 0, sy = s * (0.85 + ((h >>> 24) % 35) / 100);
-      (pine ? NL.pineT : NL.oakT)?.add(x, y, z, s * TS, sy * TS, s * TS, undefined, rot);
-      (pine ? NL.pineL : NL.oakL)?.add(x, y, z, s * TS, sy * TS, s * TS, undefined, rot);
+    if (r === 2) { // лес: ели, дубы, берёзы и осенние кроны вперемешку, разной высоты
+      const q = (h >>> 20) % 100, sy = s * (0.85 + ((h >>> 24) % 35) / 100);
+      const [tr, cr] = q < 38 ? ['pineT', 'pineL'] : q < 70 ? ['oakT', 'oakL'] : q < 82 ? ['oakT', 'oakY'] : q < 90 ? ['oakT', 'oakO'] : ['birchT', 'birchL'];
+      NL[tr]?.add(x, y, z, s * TS, sy * TS, s * TS, undefined, rot);
+      NL[cr]?.add(x, y, z, s * TS, sy * TS, s * TS, undefined, rot);
+      if ((h >>> 5) % 2) { // подлесок: второе, пониже, со смещением — лес гуще
+        const ox = x + (((h >>> 9) & 7) - 3.5) / 9, oz = z + (((h >>> 13) & 7) - 3.5) / 9, k = s * TS * 0.62;
+        const pine2 = q % 2 === 0;
+        NL[pine2 ? 'pineT' : 'oakT']?.add(ox, heightAt(ox, oz), oz, k, k, k, undefined, rot + 1.7);
+        NL[pine2 ? 'pineL' : q % 3 ? 'oakL' : 'oakY']?.add(ox, heightAt(ox, oz), oz, k, k, k, undefined, rot + 1.7);
+      }
     } else if (r === 1 && w.resKind[i] === 2) { // пшеница: ниже по мере жатвы
       const px = (i % w.W) + 0.5, pz = ((i / w.W) | 0) + 0.5, py = heightAt(px, pz), k = 0.45 + (0.55 * w.resAmt[i]) / WHEAT;
       NL.soil?.add(px, py, pz, 1, 1, 1);
@@ -495,7 +579,7 @@ function drawRes() {
     else if (r === 1) { NL.bush?.add(x, y, z, s, s, s, undefined, rot); NL.berry?.add(x, y, z, s, s, s, undefined, rot); }
     else { // камень и руда уменьшаются по мере выработки
       const k = (0.7 + (0.5 * w.resAmt[i]) / 300) * s;
-      NL[(r === 3 ? 'rock' : 'ore') + ((h >>> 16) % 3)]?.add(x, y, z, k, k * 0.9, k, undefined, rot);
+      NL[(r === 3 ? 'rock' : r === 5 ? 'gold' : 'ore') + ((h >>> 16) % 3)]?.add(x, y, z, k, k * 0.9, k, undefined, rot);
     }
   }
   for (let k = 0; k < skirtTrees.length; k += 6) { // лес за краем карты
@@ -505,7 +589,7 @@ function drawRes() {
   }
   for (const e of w.ents.values()) { // быт вокруг построек: ящики, бочки, мешки, стога, телеги, заборы
     if (e.kind !== 'b' || e.progress < BUILDINGS[e.type].time || !fog.visible(e) || !PROPS[e.type]) continue;
-    const set = PROPS[e.type], sz = BUILDINGS[e.type].size, n = 2 + (rhash(e.id) % 3);
+    const set = PROPS[e.type], sz = BUILDINGS[e.type].size, n = 3 + (rhash(e.id) % 3) + (sz > 2 ? 2 : 0) + w.players[e.owner].settle * 2; // чем крупнее поселение, тем больше быта
     for (let k = 0; k < n; k++) {
       const hh = rhash(e.id * 31 + k), side = hh % 4, t = ((hh >>> 4) % 100) / 100;
       const px = side === 0 ? e.tx - 0.35 : side === 1 ? e.tx + sz + 0.35 : e.tx + t * sz, pz = side === 2 ? e.ty - 0.35 : side === 3 ? e.ty + sz + 0.35 : e.ty + t * sz;
@@ -517,9 +601,13 @@ function drawRes() {
   }
   ls.forEach((l) => l.end());
 }
+// Столица из пака — высокая узкая башня; сплющиваем в приземистый замок, как ратуша в War Selection. [ширина, высота]
+const BSCALE: Record<string, [number, number]> = { town_center: [1.08, 0.72] };
+const AGE_TIER = [0, 0, 1, 1, 1, 1, 1, 1]; // для Имперской и Индустриальной своих моделей в паке нет — каменные // эпоха игры → эпоха пака Quaternius: дерево (Первобытная, Древняя), камень (Средневековая)
+const NOFLAG = new Set(['wall', 'gate', 'farm', 'pasture']);
 const PROPS: Record<string, string[]> = {
   town_center: ['crate', 'barrel', 'sack', 'cart', 'crate'], house: ['barrel', 'crate', 'fence', 'woodpile'], barracks: ['crate', 'barrel', 'fence'],
-  archery: ['crate', 'hay', 'fence'], stable: ['hay', 'hay', 'fence'], workshop: ['woodpile', 'crate', 'cart'], camp: ['woodpile', 'cart', 'sack'], pasture: ['hay', 'sack', 'cart'],
+  market: ['crate', 'barrel', 'sack', 'cart', 'crate'], power_plant: ['barrel', 'crate', 'woodpile'], factory: ['crate', 'barrel', 'cart'], drone_hub: ['crate', 'barrel'], airfield: ['barrel', 'crate'], archery: ['crate', 'hay', 'fence'], stable: ['hay', 'hay', 'fence'], workshop: ['woodpile', 'crate', 'cart'], camp: ['woodpile', 'cart', 'sack'], pasture: ['hay', 'sack', 'cart'],
 };
 function addModel(type: string, x: number, y: number, z: number, yaw: number, s: number, col: number[], sy = 1, noTeam = false) {
   const [b, t] = MODELS[type] ?? [null, null];
@@ -628,7 +716,8 @@ function drawEnts(a: number) {
       else if (e.order.t === 'build') { const t = w.ents.get(e.order.target); if (t && t.kind === 'b') { const hs = BUILDINGS[t.type].size / 2; yaw = Math.atan2((t.tx + hs) * TILE - e.x, (t.ty + hs) * TILE - e.y); } }
       yaws.set(e.id, yaw);
       const g = heightAt(x, z);
-      let y = g, mx = x, mz = z;
+      const fly = UNITS[e.type].air ? 2.6 + Math.sin(T * 1.3 + e.id) * 0.15 : 0; // авиация — в воздухе, слегка покачивается
+      let y = g + fly, mx = x, mz = z;
       if (moving) y += Math.abs(Math.sin(T * 9 + e.id)) * 0.06;                                            // шаг
       else if (e.order.t === 'attack' && e.cd > d.cd - 4) { mx += Math.sin(yaw) * 0.12; mz += Math.cos(yaw) * 0.12; } // выпад
       const au = A?.units[e.type];
@@ -640,19 +729,30 @@ function drawEnts(a: number) {
           ? Math.min(fr.length - 1, Math.floor(((d.cd - e.cd) / d.cd) * fr.length)) // удар синхронен с атакой
           : Math.floor(((T + e.id * 0.37) / (A?.udur[e.type]?.[key] ?? 1)) * fr.length) % fr.length; // ~24 кадра на клип, с реальной скоростью
         fr[i].add(x, g, z, US, US, US, undefined, yaw);
-        L.team.add(x, g + 0.03, z, 0.36, 1, 0.36, col);
+        L.team.add(x, g + 0.03, z, 0.44, 1, 0.44, col);
       } else addModel(e.type, mx, y, mz, yaw, US, col);
       if (selSet.has(e.id)) L.sel.add(x, g + 0.03, z, 0.46, 1, 0.46);
       const mh = maxHp(w, e);
-      if (showBar(e.hp < mh, selSet.has(e.id))) bar(x, g + (UH[e.type] ?? 1.05) * US, z, 0.45, e.hp / mh);
+      if (showBar(e.hp < mh, selSet.has(e.id))) bar(x, g + fly + (UH[e.type] ?? 1.05) * US, z, 0.45, e.hp / mh);
     } else {
       const d = BUILDINGS[e.type], k = Math.max(0.15, e.progress / d.time), cx = e.tx + d.size / 2, cz = e.ty + d.size / 2;
       const by = heightAt(cx, cz), bh = (BH[e.type] ?? 1.6) * k;
       const ab = e.type === 'wall' || e.type === 'gate' ? undefined : A?.buildings[e.type]; // стены — свои квадратные блоки, одинаковые по X и Y
-      if (ab) ab[colorIdx(e.owner) % ab.length].add(cx, by, cz, 1, k, 1); // здание в цвете игрока
+      const sg = e.type === 'wall' || e.type === 'gate' ? undefined : A?.staged[e.type];
+      if (sg) { // Quaternius: вид по эпохе владельца, вариант — по зданию, стадия — по ходу стройки
+        const tier = sg[Math.min(AGE_TIER[w.players[e.owner].age] ?? 0, sg.length - 1)], v = tier[rhash(e.id) % tier.length];
+        const st = e.progress >= d.time ? v.length - 1 : Math.min(v.length - 1, Math.floor((e.progress / d.time) * v.length));
+        const yaw = e.type === 'house' ? ((rhash(e.id) >>> 5) % 4) * (Math.PI / 2) : 0; // дома повёрнуты по-разному — деревня живее
+        v[st].add(cx, by, cz, 1, v.length > 1 ? 1 : k, 1, undefined, yaw);
+      } else if (ab) { const [bw, bv] = BSCALE[e.type] ?? [1, 1]; ab[colorIdx(e.owner) % ab.length].add(cx, by, cz, bw, k * bv, bw); } // KayKit: здание в цвете игрока
       else if (e.type === 'wall' || e.type === 'gate') drawWallPiece(e, by, k, col); // вдоль линии стены, под любым углом
       else addModel(e.type, cx, by, cz, 0, 1, col, k);
       L.bld.add(cx, by + bh / 2, cz, d.size, bh, d.size);
+      if (k >= 1 && !NOFLAG.has(e.type)) { // флаг цвета игрока на углу, как в War Selection: сразу видно, чьё здание
+        const fx = e.tx + 0.12, fz = e.ty + 0.12, fy = heightAt(fx, fz), ph = 1.3 + d.size * 0.25, wave = Math.sin(T * 3 + e.id) * 0.12;
+        L.pole.add(fx, fy + ph / 2, fz, 0.05, ph, 0.05);
+        L.banner.add(fx + 0.22, fy + ph - 0.16, fz, 0.42, 0.28, 0.03, col, wave);
+      }
       bldIds.push(e.id);
       const mh = maxHp(w, e);
       if (showBar(e.hp < mh, selSet.has(e.id))) bar(cx, by + bh + 0.4, cz, d.size * 0.6, e.hp / mh);
@@ -798,6 +898,8 @@ function order(sx: number, sy: number, amove = false, q = false) {
   const t = entityAt(sx, sy);
   if (t && t.kind === 'u' && UNITS[t.type].animal && t.owner === ME) { SFX.attack(); return send({ p: ME, q, t: 'attack', units: ids, target: t.id }); } // забить корову
   if (t && !ally(w, t.owner, ME)) { SFX.attack(); return send({ p: ME, q, t: 'attack', units: ids, target: t.id }); }
+  const traders = mine.filter((u) => UNITS[u.type].cls === 'trade').map((u) => u.id);
+  if (!amove && t && t.kind === 'b' && t.type === 'market' && traders.length) return send({ p: ME, q, t: 'route', units: traders, target: t.id }); // повозки — торговать с этим рынком
   if (!amove && t && t.kind === 'b' && vills.length) {
     if (t.progress < BUILDINGS[t.type].time || t.hp < maxHp(w, t)) return send({ p: ME, q, t: 'assist', units: vills, target: t.id }); // стройка или ремонт
     if (t.type === 'farm') return send({ p: ME, q, t: 'farm', units: [vills[0]], target: t.id });
@@ -806,6 +908,11 @@ function order(sx: number, sy: number, amove = false, q = false) {
   if (g) orderTile(Math.floor(g.x), Math.floor(g.z), amove, q);
 }
 
+// Формация отряда: 0 квадрат, 1 линия, 2 клин, 3 черепаха (Z — следующая). Запоминается между партиями
+const FORMS: [string, string, string][] = [['▦', 'Квадрат', 'Обычный плотный строй'], ['☰', 'Линия', 'Широкий фронт в 1–3 шеренги: рукопашные впереди, стрелки сзади'],
+  ['▲', 'Клин', 'Остриём к цели — прорыв строя противника'], ['⛨', 'Черепаха', 'Плотный квадрат: рукопашные по краям, стрелки внутри']];
+let form = (() => { try { return Number(localStorage.getItem('epohi-form')) || 0; } catch { return 0; } })();
+const setForm = (f: number) => { form = f % FORMS.length; try { localStorage.setItem('epohi-form', String(form)); } catch { /* приватный режим */ } };
 function orderTile(tx: number, ty: number, amove = false, q = false) {
   const mine = mySel(), ids = mine.map((u) => u.id), vills = mine.filter(isVill).map((u) => u.id);
   if (!ids.length) return;
@@ -816,7 +923,8 @@ function orderTile(tx: number, ty: number, amove = false, q = false) {
     if (others.length) send({ p: ME, q, t: 'move', units: others, x: tx, y: ty });
     return;
   }
-  send({ p: ME, q, t: amove ? 'amove' : 'move', units: ids, x: tx, y: ty });
+  const f = form && mine.some((u) => !isVill(u)) ? form : 0; // строем ходят войска; одни жители — как раньше
+  send(f ? { p: ME, q, t: amove ? 'amove' : 'move', units: ids, x: tx, y: ty, f } : { p: ME, q, t: amove ? 'amove' : 'move', units: ids, x: tx, y: ty });
 }
 
 function ghostTile(sx: number, sy: number): [number, number] | null {
@@ -905,6 +1013,9 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyP' && ssaoMade) { ssaoOn = !ssaoOn; if (ssaoOn) scene.postProcessRenderPipelineManager.attachCamerasToRenderPipeline('ssao', cam); else scene.postProcessRenderPipelineManager.detachCamerasFromRenderPipeline('ssao', cam); } // мягкие контактные тени
   if (e.code === 'Escape') { cancelPlace(); setAmove(false); }
   if (e.code === 'KeyF' && mySel().length) setAmove(true); // F + ЛКМ — атака с движением
+  if (e.code === 'KeyZ') setForm(form + 1);
+  if (debug && e.code === 'F2') { e.preventDefault(); send({ p: ME, t: 'cheat' }); }
+  if (debug && e.code === 'F3') { e.preventDefault(); fog.mode = fog.mode === 'none' ? 'normal' : 'none'; if (fog.mode === 'none') fog.seen.fill(1); fog.changed = true; }
   if (e.code === 'KeyX' && mySel().length) send({ p: ME, t: 'stop', units: mySel().map((u) => u.id) });
   if (e.code === 'Delete') { const ids = sel.filter((id) => w.ents.get(id)?.owner === ME); if (ids.length) send({ p: ME, t: 'destroy', ids }); }
   if (e.code === 'KeyH') { // к столице
@@ -945,12 +1056,12 @@ function panCamera(dt: number) {
 
 // ---------- Интерфейс: как в классических RTS ----------
 // сверху — ресурсы и эпоха, снизу — миникарта, панель выделения и сетка команд с иконками и горячими клавишами
-const ICON: Record<string, string> = { food: '🍖', wood: '🪵', stone: '🪨', iron: '⛓️' };
+const ICON: Record<string, string> = { food: '🍖', wood: '🪵', stone: '🪨', iron: '⛓️', gold: '🪙', energy: '⚡' };
 const UICON: Record<string, string> = {
-  villager: '🧑‍🌾', clubman: '🪓', spearman: '🔱', archer: '🏹', swordsman: '⚔️', horseman: '🐎', ram: '🪵',
+  villager: '🧑‍🌾', clubman: '🪓', spearman: '🔱', archer: '🏹', swordsman: '⚔️', horseman: '🐎', ram: '🪵', hunter: '🎯', scout: '🏇', legionary: '🛡️', crossbowman: '🎯', knight: '♞', trader: '🛒', market: '⚖️', musketeer: '💂', cuirassier: '🏇', cannon: '💣', rifleman: '🪖', machinegunner: '🔫', artillery: '💥', power_plant: '🏭', tank: '🚜', bazooka: '🎇', aa_gun: '🎆', fighter: '✈️', bomber: '🛩️', factory: '🏗️', airfield: '🛫', marine: '🪖', apc: '🚙', mlrs: '🚀', sam: '📡', jet: '🛦', helicopter: '🚁', laser_trooper: '🔆', drone: '🛸', mech: '🤖', railgun: '⚡', drone_hub: '📶',
   cow: '🐄', pasture: '🏡', town_center: '🏰', house: '🏠', farm: '🌾', camp: '⛺', barracks: '🛡️', archery: '🎯', tower: '🗼', wall: '🧱', gate: '🚪', stable: '🐴', workshop: '⚒️',
 };
-const DOING: Record<string, string> = { idle: 'Бездельничает', move: 'Идёт', amove: 'Идёт в атаку', attack: 'Сражается', gather: 'Добывает', farm: 'Работает в поле', build: 'Строит / чинит' };
+const DOING: Record<string, string> = { idle: 'Бездельничает', move: 'Идёт', amove: 'Идёт в атаку', attack: 'Сражается', gather: 'Добывает', farm: 'Работает в поле', build: 'Строит / чинит', trade: 'Торгует' };
 const costStr = (c: Cost) => RES.filter((r) => c[r]).map((r) => ICON[r] + c[r]).join(' ');
 const HK = 'QERTYUIPGJKLZCVBNM'; // горячие клавиши кнопок по порядку (WASD — камера; F H O X — свои)
 let hki = 0, tips: Record<string, string> = {};
@@ -992,6 +1103,8 @@ function act(a: string) {
   if (k === 'conv') send({ p: ME, t: 'convert', building: Number(x), to: y });
   if (k === 'gate') send({ p: ME, t: 'gate', building: Number(x), open: y === '1' });
   if (k === 'alert') jumpAlert();
+  if (k === 'form') setForm(Number(x));
+  if (k === 'mkt') send({ p: ME, t: 'trade', building: Number(x), res: y, buy: a.split(':')[3] === '1' });
 }
 for (const id of ['hud', 'alerts']) $(id).addEventListener('pointerdown', (e) => {
   const el = (e.target as HTMLElement).closest('[data-a]') as HTMLElement | null;
@@ -1014,12 +1127,12 @@ function ui() {
   const P = w.players[ME];
   const afford = (c: Cost) => RES.every((r) => P.res[r] >= (c[r] ?? 0));
   // верх
-  setHTML('res', `<span>👥 <b>${P.pop}/${P.popCap}</b></span>` + RES.map((r) => `<span>${ICON[r]} <b>${P.res[r]}</b></span>`).join(''));
+  setHTML('res', `<span>👥 <b>${P.pop}/${P.popCap}</b></span>` + RES.filter((r) => r !== 'energy' || P.age >= 4 || P.res.energy > 0).map((r) => `<span>${ICON[r]} <b>${P.res[r]}</b></span>`).join(''));
   setHTML('status', `${S.showFps ? `<span>FPS ${Math.round(engine.getFps())}</span>` : ''}<span style="opacity:.45">сб.24</span>
 
 <span>⏱ ${fmt(w.tick)}</span><span>🗺 ${w.regions.filter((r) => r.owner === ME).length}/${w.regions.length}</span><span>${BRANCHES.map((b) => BRANCH[b].icon + cultureLevel(P, b)).join(' ')}</span>`);
   setHTML('agename', `${AGE_NAMES[P.age]} эпоха`);
-  setHTML('agesub', `${identity(P)} цивилизация${P.ageing ? ' · переход в новую эпоху…' : ''}`);
+  setHTML('agesub', `${identity(P)} цивилизация · ${SETTLE[P.settle].name}${P.ageing ? ' · переход в новую эпоху…' : ''}`);
   setHTML('hover', hover);
   // уведомления слева
   let al = '';
@@ -1038,7 +1151,7 @@ function ui() {
   if (selRes >= 0 && !w.resType[selRes]) selRes = -1;
   if (!ents.length && selRes >= 0) { // выбран ресурс
     const rt = w.resType[selRes], meat = w.resKind[selRes] === 1;
-    const wh = w.resKind[selRes] === 2 && rt === 1, nm = meat ? 'Туша коровы' : wh ? 'Пшеница' : ['', 'Ягодный куст', 'Дерево', 'Камень', 'Железная руда'][rt], ic = meat ? '🍖' : wh ? '🌾' : ['', '🫐', '🌲', '🪨', '⛓️'][rt];
+    const wh = w.resKind[selRes] === 2 && rt === 1, nm = meat ? 'Туша коровы' : wh ? 'Пшеница' : ['', 'Ягодный куст', 'Дерево', 'Камень', 'Железная руда', 'Золотая жила'][rt], ic = meat ? '🍖' : wh ? '🌾' : ['', '🫐', '🌲', '🪨', '⛓️', '🪙'][rt];
     const men = [...w.ents.values()].filter((u) => u.kind === 'u' && u.order.t === 'gather' && u.order.tile === selRes).length;
     info = `<div class="pv"><div class="portrait">${ic}</div><div><div class="nm">${nm}</div><div class="sub">Осталось: <b>${w.resAmt[selRes]}</b> ${ICON[RES[rt - 1]]}</div><div class="sub">Добывают: ${men}</div></div></div>`;
   } else if (!ents.length) info = !S.hints ? '' : `<div class="hint">ЛКМ — выбрать (двойной клик — всех таких), рамка — группа. ПКМ — приказ, Shift+ПКМ — в очередь, F+ЛКМ — атака с движением.<br>
@@ -1072,6 +1185,14 @@ function ui() {
           btns += btn(`conv:${one.id}:tower`, '🗼', `<b>Башня на стене</b><br>${costStr(BUILDINGS.tower.cost)}<br><small>Стреляет по врагам рядом. Нужна Древняя эпоха</small>`, P.age >= BUILDINGS.tower.age && afford(BUILDINGS.tower.cost));
           if (one.type === 'gate') body += `<div class="sub">${one.open ? 'Ворота открыты' : 'Ворота закрыты'}</div>`;
         }
+        if (one.type === 'market' && one.progress >= BUILDINGS.market.time) { // обмен: 100 единиц ↔ золото по плавающей цене
+          btns += '<div class="hdr">Рынок · 100 единиц за 🪙 · повозкам — ПКМ по другому рынку</div>';
+          for (const r of (P.age >= 4 ? ['food', 'wood', 'stone', 'iron', 'energy'] : ['food', 'wood', 'stone', 'iron']) as Res[]) { // энергия — с Индустриальной
+            const pr = P.prices[r] ?? 0, sell = Math.floor((pr * (100 - MARKET_FEE)) / 100);
+            btns += btn(`mkt:${one.id}:${r}:1`, `${ICON[r]}+`, `<b>Купить 100 ${ICON[r]}</b><br>за 🪙${pr}<br><small>Покупка поднимает цену</small>`, P.res.gold >= pr);
+            btns += btn(`mkt:${one.id}:${r}:0`, `${ICON[r]}−`, `<b>Продать 100 ${ICON[r]}</b><br>получите 🪙${sell}<br><small>Продажа снижает цену; комиссия ${MARKET_FEE}%</small>`, P.res[r] >= 100);
+          }
+        }
         if (one.type === 'pasture') { const n = one.queue.filter((q) => q === '#wheat').length; btns += btn(`sow:${one.id}`, '🌾', `<b>Посеять пшеницу</b><br>${costStr(WHEAT_COST)}<br><small>${WHEAT_SOW} участка вокруг фермы, по ${WHEAT} еды. Собранный участок исчезает</small>`, afford(WHEAT_COST), n ? String(n) : ''); }
         const ac = ageCost(P);
         if (one.type === 'town_center' && ac && !P.ageing) btns += btn(`age:${one.id}`, '⏫', `<b>${AGE_NAMES[P.age + 1]} эпоха</b><br>${costStr(ac)}`, afford(ac));
@@ -1100,6 +1221,8 @@ function ui() {
     const cnt: Record<string, number> = {};
     for (const e of ents) cnt[e.type] = (cnt[e.type] ?? 0) + 1;
     info = `<div class="nm">Выбрано: ${ents.length}</div><div class="grp">${Object.entries(cnt).map(([t, n]) => `<div class="slot" data-a="only:${t}" title="${NAMES[t]} — оставить только их">${UICON[t] ?? '❔'}<u>${n}</u></div>`).join('')}</div>`;
+    if (ents.some((e) => e.kind === 'u' && e.owner === ME && UNITS[e.type].cls !== 'worker' && !UNITS[e.type].animal)) // строй для войск
+      FORMS.forEach(([ic, nm, d], i) => { btns += btn(`form:${i}`, ic, `<b>Формация: ${nm}</b><br><small>${d}. Z — следующая</small>`, true, i === form ? '✓' : ''); });
     if (ents.some((e) => e.kind === 'u' && e.owner === ME && UNITS[e.type].cls === 'worker'))
       for (const [k, d] of Object.entries(BUILDINGS)) if (d.age <= P.age && k !== 'gate' && k !== 'farm') btns += btn(`build:${k}`, UICON[k], `<b>${NAMES[k]}</b><br>${costStr(d.cost)}`, afford(d.cost));
   }
@@ -1187,9 +1310,9 @@ function onFx(f: Fx) {
   if (f.k === 'news') { // общее событие: баннер + сигнал
     const c = [...w.chron].reverse().find((c) => c.p < 0);
     if (!c) return;
-    $('news').textContent = c.text.replace(/P(\d)/g, (_, n) => who(Number(n)));
+    $('news').innerHTML = esc(c.text).replace(/P(\d)/g, (_, n) => who(Number(n)));
     clearTimeout(newsTimer);
-    newsTimer = setTimeout(() => ($('news').textContent = ''), 7000);
+    newsTimer = window.setTimeout(() => ($('news').textContent = ''), 7000);
     SFX.built();
     return;
   }
@@ -1227,7 +1350,7 @@ $('pExit').onclick = () => { location.href = location.pathname; };
 for (const id of ['hud', 'topbar', 'alerts']) ($(id).style as unknown as Record<string, string>).zoom = String(S.uiScale); // масштаб интерфейса
 
 // ---------- Итог матча и хроника ----------
-const who = (n: number) => (net ? net.names[n] : n === ME ? 'Вы' : 'Бот') ?? `Игрок ${n + 1}`;
+const who = (n: number) => esc((net ? net.names[n] : n === ME ? 'Вы' : 'Бот') ?? `Игрок ${n + 1}`); // имена идут в innerHTML
 let ended = false;
 function endScreen() {
   if (ended) return;
@@ -1291,7 +1414,11 @@ engine.runRenderLoop(() => {
   panCamera(dt);
   drawEnts(Math.min(1, acc / (TICK_MS / gameSpeed)));
   ui();
-  } catch (err) { if (!loopErr) { loopErr = true; console.error('Ошибка кадра (игра продолжается):', err); } }
+  } catch (err) {
+    if (!loopErr) { loopErr = true; console.error('Ошибка кадра (игра продолжается):', err); }
+    // В сетевой игре упавший на полпути step() — это уже рассинхрон: молчать нельзя
+    if (net) { $('msg').style.display = 'block'; $('msg').textContent = 'Ошибка симуляции — возможен рассинхрон, см. консоль'; }
+  }
   setWind(S.wind ? performance.now() / 1000 : 0);
   skyM.setFloat('uTime', performance.now() / 1000);
   wm.setFloat('uTime', performance.now() / 1000); wm.setVector3('uCam', cam.position); wm.setVector3('uSun', sun.direction); wm.setColor3('uFog', scene.fogColor); wm.setFloat('uFogD', scene.fogDensity);

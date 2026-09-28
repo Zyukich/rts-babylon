@@ -12,7 +12,7 @@ function report(w: World) {
       if (e.kind === 'b') b++; else if (UNITS[e.type].cls === 'worker') v++; else a++;
     }
     const r = P.res;
-    console.log(`  P${P.id} ${AGE_NAMES[P.age].padEnd(13)} еда ${r.food} дер ${r.wood} кам ${r.stone} жел ${r.iron} | нас ${P.pop}/${P.popCap} жит ${v} войск ${a} зданий ${b}`);
+    console.log(`  P${P.id} ${AGE_NAMES[P.age].padEnd(13)} еда ${r.food} дер ${r.wood} кам ${r.stone} жел ${r.iron} зол ${r.gold} эн ${r.energy} | нас ${P.pop}/${P.popCap} жит ${v} войск ${a} зданий ${b}`);
   }
 }
 
@@ -41,3 +41,4 @@ import('./civ.ts').then(({ identity, year, TECHS }) => {
 });
 const w2 = run(seed, MAX, false);
 console.log(`Детерминизм: ${hash(w1)} / ${hash(w2)} → ${hash(w1) === hash(w2) ? 'OK' : 'РАССИНХРОН!'}`);
+if (hash(w1) !== hash(w2)) process.exitCode = 1; // для CI: рассинхрон — провал

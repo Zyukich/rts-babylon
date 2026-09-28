@@ -3,7 +3,7 @@ import type { World } from './world.ts';
 import type { Fog } from './fog.ts';
 
 const TERR = [[100, 150, 75], [50, 100, 190], [115, 108, 100], [140, 155, 85]];
-const RESC = [[0, 0, 0], [200, 50, 110], [30, 95, 35], [190, 190, 190], [140, 75, 60]];
+const RESC = [[0, 0, 0], [200, 50, 110], [30, 95, 35], [190, 190, 190], [140, 75, 60], [235, 200, 60]];
 const PCOL = ['#3373ff', '#e63333', '#f2cc33', '#4dcc4d', '#b34de6', '#33cccc', '#ff8c1a', '#e6e6e6'];
 let buf: HTMLCanvasElement | null = null, img: ImageData | null = null;
 
