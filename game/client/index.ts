@@ -63,7 +63,7 @@ export async function createGame(canvas: HTMLCanvasElement, opts: GameOptions): 
     // ---------- настоящие модели и текстуры (если собраны: npm run assets) ----------
     opts.onProgress?.('Загрузка моделей…');
     const man = await fetchManifest();
-    ctx.assets = man ? await loadAssets(ctx.stage.scene, man, (m) => ctx.gfx.layer(m, null), BUILDINGS, (t) => opts.onProgress?.(`Загрузка моделей… ${t}`))
+    ctx.assets = man ? await loadAssets(ctx.stage.scene, man, (m, perColor) => ctx.gfx.layer(m, null, perColor), BUILDINGS, (t) => opts.onProgress?.(`Загрузка моделей… ${t}`))
       .catch((e) => { console.warn('Ассеты не загрузились, рисуем процедурно', e); return null; }) : null;
     if (!alive) return { act() {}, attachMinimap: () => () => {}, dispose };
     void loadSounds(man?.sounds, ASSETS_ROOT);

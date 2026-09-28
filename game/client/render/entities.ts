@@ -87,7 +87,9 @@ export function useEntities(ctx: GameContext) {
           const i = key === 'attack' || key === 'shoot'
             ? Math.min(fr.length - 1, Math.floor(((d.cd - e.cd) / d.cd) * fr.length)) // удар синхронен с атакой
             : Math.floor(((T + e.id * 0.37) / (A?.udur[e.type]?.[key] ?? 1)) * fr.length) % fr.length; // с реальной скоростью клипа
-          fr[i].add(x, g, z, US, US, US, undefined, yaw);
+          const air = fly ? y : g; // техника в воздухе висит на высоте полёта
+          fr[i].base.add(x, air, z, US, US, US, undefined, yaw);
+          fr[i].team?.add(x, air, z, US, US, US, col, yaw);
           L.team.add(x, g + 0.03, z, 0.44, 1, 0.44, col);
         } else addModel(e.type, mx, y, mz, yaw, US, col);
         if (picked) L.sel.add(x, g + 0.03, z, 0.46, 1, 0.46);

@@ -51,7 +51,7 @@ function gltfInfo(relPath) {
     try {
       const j = readGltf(abs), dir = path.dirname(abs);
       const uris = [...(j.buffers ?? []), ...(j.images ?? [])].map((x) => x.uri).filter((u) => u && !u.startsWith('data:'));
-      info = { anims: (j.animations ?? []).map((a) => a.name ?? ''), skinned: !!j.skins?.length, missing: uris.filter((u) => !fs.existsSync(path.join(dir, decodeURIComponent(u)))) };
+      info = { anims: (j.animations ?? []).map((a) => a.name ?? ''), skinned: !!j.skins?.length, parts: (j.nodes ?? []).filter((n) => n.mesh !== undefined).map((n) => n.name ?? ''), missing: uris.filter((u) => !fs.existsSync(path.join(dir, decodeURIComponent(u)))) };
     } catch (e) { info = { error: e.message }; }
   }
   gltfCache.set(relPath, info);
@@ -135,20 +135,25 @@ async function prepareTexture(key, t) {
 // ---------- Манифест ----------
 function buildManifest(cat, hash) {
   const packs = strip(cat.packs), man = { version: VERSION, catalog: hash, units: {}, buildings: {}, textures: {}, sounds: {} };
+  const globRe = (p) => new RegExp(`^${p.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`);
   for (const [type, u] of Object.entries(strip(cat.units))) {
     if (!u.model) continue;
     const file = model(u.model, packs, `юнит ${type}`);
     if (!file) continue;
-    const anims = {};
+    const info = gltfInfo(file), anims = {};
     for (const [key, a] of Object.entries(u.anims ?? {})) {
       const spec = typeof a === 'string' ? { file, name: a } : { file: a.file ? model(a.file, packs, `юнит ${type}.${key}`) : file, name: a.name };
       if (!spec.file) continue;
-      const info = gltfInfo(spec.file);
-      if (info?.anims && !info.anims.includes(spec.name)) { err(`юнит ${type}: в ${spec.file} нет анимации «${spec.name}» (есть: ${info.anims.slice(0, 12).join(', ')}${info.anims.length > 12 ? '…' : ''})`); continue; }
+      const ai = gltfInfo(spec.file);
+      if (ai?.anims && !ai.anims.includes(spec.name)) { err(`юнит ${type}: в ${spec.file} нет анимации «${spec.name}» (есть: ${ai.anims.slice(0, 12).join(', ')}${ai.anims.length > 12 ? '…' : ''})`); continue; }
       anims[key] = spec;
     }
-    if (!anims.idle && !anims.walk) { warn(`юнит ${type}: нет ни idle, ни walk — будет процедурная модель`); continue; }
-    man.units[type] = { file, anims };
+    if (u.anims && Object.keys(u.anims).length && !anims.idle && !anims.walk) { warn(`юнит ${type}: нет ни idle, ни walk — будет процедурная модель`); continue; }
+    for (const p of [...(u.parts ?? []), ...(u.team ?? [])]) // части модели: опечатка в имени — ошибка
+      if (info?.parts && !info.parts.some((n) => globRe(p).test(n))) err(`юнит ${type}: в ${file} нет части «${p}» (есть: ${info.parts.join(', ')})`);
+    const spec = { file, anims };
+    for (const k of ['parts', 'team', 'scale', 'length', 'rotate']) if (u[k] !== undefined) spec[k] = u[k];
+    man.units[type] = spec;
   }
   for (const [type, b] of Object.entries(strip(cat.buildings))) {
     const out = {};

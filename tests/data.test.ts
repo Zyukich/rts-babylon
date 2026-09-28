@@ -28,6 +28,11 @@ describe('assets/catalog.json', () => {
     const ok = ['idle', 'walk', 'attack', 'shoot', 'work', 'die'];
     for (const [id, u] of Object.entries(catalog.units)) if (typeof u === 'object' && 'anims' in u) for (const k of Object.keys(u.anims)) expect(ok, `${id}.${k}`).toContain(k);
   });
+  it('у юнита с частями модели есть что красить или что показывать', () => {
+    for (const [id, u] of Object.entries(catalog.units) as [string, { parts?: string[]; team?: string[] }][]) {
+      if (u.team) expect(u.parts ?? [], `${id}: team должен входить в parts`).toEqual(expect.arrayContaining(u.team));
+    }
+  });
   it('сборщик ассетов не находит ошибок', () => {
     expect(() => execFileSync('node', ['scripts/assets/build.mjs', '--check'], { stdio: 'pipe' })).not.toThrow();
   });

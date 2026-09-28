@@ -3,12 +3,14 @@
 // Так сотни анимированных юнитов стоят почти как статичные. Нет манифеста или файла — остаются процедурные модели.
 import '@babylonjs/loaders/glTF';
 import { ANIM_FRAMES, UNIT_HEIGHT } from '../config/visual.ts';
-import { SceneLoader, Mesh, VertexData, Vector3, Texture, MultiMaterial, type Scene, type AbstractMesh, type AnimationGroup, type AssetContainer, type Material } from '@babylonjs/core';
+import { SceneLoader, Mesh, VertexData, Vector3, Texture, Color3, MultiMaterial, type Scene, type AbstractMesh, type AnimationGroup, type AssetContainer, type Material } from '@babylonjs/core';
 
 export interface LayerLike { mesh: Mesh; begin(): void; add(x: number, y: number, z: number, sx: number, sy: number, sz: number, col?: number[], yaw?: number): void; end(): void; }
 export type AnimKey = 'idle' | 'walk' | 'attack' | 'shoot' | 'work' | 'die';
+/** Кадр запечённой анимации: основа + части в цвет игрока (плащ и т.п.) */
+export interface UnitFrame { base: LayerLike; team: LayerLike | null }
 export interface Assets {
-  units: Record<string, Partial<Record<AnimKey, LayerLike[]>>>; // тип → анимация → кадры
+  units: Record<string, Partial<Record<AnimKey, UnitFrame[]>>>; // тип → анимация → кадры
   udur: Record<string, Partial<Record<AnimKey, number>>>;      // длительность клипа, с
   buildings: Record<string, LayerLike[]>;                       // тип → варианты по цветам игроков
   staged: Record<string, LayerLike[][][]>;                      // тип → [эпоха][вариант][стадия стройки]
@@ -19,11 +21,15 @@ interface AnimRef { file: string; name: string; }
 /** public/assets/manifest.json — собирает scripts/assets/build.mjs */
 export interface Manifest {
   version: number;
-  units?: Record<string, { file: string; anims: Partial<Record<AnimKey, AnimRef>> }>;
+  units?: Record<string, UnitSpec>;
   buildings?: Record<string, { ages?: string[][][]; colors?: string[] }>;
   textures?: Record<string, string>;
   sounds?: Record<string, { file: string; volume?: number }>;
 }
+
+/** Юнит в манифесте. parts — какие части модели оставить (шаблоны имён, * — любые символы), team — какие из них в цвет игрока.
+ *  Без anims — статичная модель (техника). length — длина по земле в клетках (для техники), иначе рост = unitHeight × scale. rotate — поворот, градусы */
+export interface UnitSpec { file: string; anims: Partial<Record<AnimKey, AnimRef>>; parts?: string[]; team?: string[]; scale?: number; length?: number; rotate?: number }
 
 export const ASSETS_ROOT = '/assets/';
 export async function fetchManifest(): Promise<Manifest | null> {
@@ -127,7 +133,31 @@ async function loadStatic(scene: Scene, file: string, footprint: number, fit: Fi
   return m;
 }
 
-async function loadUnit(scene: Scene, spec: { file: string; anims: Partial<Record<AnimKey, AnimRef>> }, libs: Map<string, AssetContainer>) {
+const glob = (pats: string[]) => { // имя меша из glTF: «Knight_Body» или «Knight_Body_primitive0»
+  const re = pats.map((p) => new RegExp(`^${p.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}(_primitive\\d+)?$`));
+  return (name: string) => re.some((r) => r.test(name));
+};
+// Материал для частей «в цвет игрока»: без текстуры, белый — цвет даёт инстанс
+const teamMats = new Map<Material, Material>();
+function teamMaterial(mat: Material | null): Material | null {
+  if (!mat) return null;
+  if (mat instanceof MultiMaterial) {
+    const mm = mat.clone(mat.name + '_team', false);
+    mm.subMaterials = mat.subMaterials.map((m) => teamMaterial(m));
+    return mm;
+  }
+  if (!teamMats.has(mat)) {
+    const cl = mat.clone(mat.name + '_team')! as unknown as Record<string, unknown>;
+    for (const k of ['albedoTexture', 'diffuseTexture']) if (k in cl) cl[k] = null;
+    if ('albedoColor' in cl) cl.albedoColor = Color3.White();
+    if ('diffuseColor' in cl) cl.diffuseColor = Color3.White();
+    teamMats.set(mat, cl as unknown as Material);
+  }
+  return teamMats.get(mat)!;
+}
+
+type Baked = { base: Mesh; team: Mesh | null };
+async function loadUnit(scene: Scene, spec: UnitSpec, libs: Map<string, AssetContainer>) {
   const c = await load(spec.file, scene);
   c.addAllToScene();
   for (const g of c.animationGroups) g.stop();
@@ -141,14 +171,37 @@ async function loadUnit(scene: Scene, spec: { file: string; anims: Partial<Recor
     const src = lib.animationGroups.find((g) => g.name === a.name);
     return src ? src.clone(`${a.name}_${spec.file}`, (t) => byName.get(t.name) ?? t) : null; // переносим анимацию на кости персонажа по именам
   };
-  const meshes = c.meshes.filter((m) => m.getTotalVertices() > 0 && m.isEnabled() && m.isVisible);
-  const out: Partial<Record<AnimKey, Mesh[]>> = {}, durs: Partial<Record<AnimKey, number>> = {};
+  const keep = spec.parts?.length ? glob(spec.parts) : () => true, isTeam = spec.team?.length ? glob(spec.team) : () => false;
+  const meshes = c.meshes.filter((m) => m.getTotalVertices() > 0 && (spec.parts?.length ? keep(m.name) : m.isEnabled() && m.isVisible));
+  const baseMs = meshes.filter((m) => !isTeam(m.name)), teamMs = meshes.filter((m) => isTeam(m.name));
+  const skinned = c.skeletons.length > 0;
+  const out: Partial<Record<AnimKey, Baked[]>> = {}, durs: Partial<Record<AnimKey, number>> = {};
   let norm: number[] | null = null;
+  const rot = ((spec.rotate ?? 0) * Math.PI) / 180;
+  const bake = (): Baked | null => {
+    const base = snapshot(scene, baseMs, skinned), team = teamMs.length ? snapshot(scene, teamMs, skinned) : null;
+    if (!base) return null;
+    if (team) team.material = teamMaterial(team.material);
+    for (const m of [base, team]) if (m && rot) { m.rotation.y = rot; m.bakeCurrentTransformIntoVertices(); m.refreshBoundingInfo(); }
+    if (!norm) { // масштаб и центр — по первой позе: ноги (колёса) на земле
+      const b = base.getBoundingInfo().boundingBox;
+      const k = spec.length ? spec.length / (Math.max(b.maximum.x - b.minimum.x, b.maximum.z - b.minimum.z) || 1) : (UNIT_HEIGHT * (spec.scale ?? 1)) / ((b.maximum.y - b.minimum.y) || 1);
+      norm = [k, (b.minimum.x + b.maximum.x) / 2, b.minimum.y, (b.minimum.z + b.maximum.z) / 2];
+    }
+    for (const m of [base, team]) if (m) normalize(m, norm[0], norm[1], norm[2], norm[3]);
+    return { base, team };
+  };
+  const keys = Object.keys(spec.anims) as AnimKey[];
+  if (!keys.length) { // статичная модель: одна поза на все случаи
+    for (const n of c.transformNodes) n.computeWorldMatrix(true);
+    const f = bake();
+    if (f) { out.idle = [f]; durs.idle = 1; }
+  }
   for (const key of ['idle', 'walk', 'attack', 'shoot', 'work', 'die'] as AnimKey[]) {
     const g = await groupFor(spec.anims[key]);
     if (!g) continue;
     for (const o of c.animationGroups) o.stop();
-    const F = ANIM_FRAMES[key] ?? 16, list: Mesh[] = [];
+    const F = ANIM_FRAMES[key] ?? 16, list: Baked[] = [];
     for (let k = 0; k < F; k++) {
       const t = g.from + ((g.to - g.from) * k) / (key === 'die' ? F - 1 : F);
       g.start(false, 1, g.from, g.to);
@@ -156,14 +209,8 @@ async function loadUnit(scene: Scene, spec: { file: string; anims: Partial<Recor
       g.pause();
       for (const n of c.transformNodes) n.computeWorldMatrix(true);
       for (const s of c.skeletons) s.prepare(true);
-      const m = snapshot(scene, meshes, true);
-      if (!m) continue;
-      if (!norm) { // масштаб и центр — по первой позе: рост ≈ 0.95 клетки, ноги на земле
-        const b = m.getBoundingInfo().boundingBox;
-        norm = [UNIT_HEIGHT / ((b.maximum.y - b.minimum.y) || 1), (b.minimum.x + b.maximum.x) / 2, b.minimum.y, (b.minimum.z + b.maximum.z) / 2];
-      }
-      normalize(m, norm[0], norm[1], norm[2], norm[3]);
-      list.push(m);
+      const f = bake();
+      if (f) list.push(f);
     }
     g.stop();
     if (list.length) { out[key] = list; durs[key] = Math.max(0.25, (g.to - g.from) / 60); }
@@ -172,7 +219,7 @@ async function loadUnit(scene: Scene, spec: { file: string; anims: Partial<Recor
   return Object.keys(out).length ? { out, durs } : null;
 }
 
-export async function loadAssets(scene: Scene, man: Manifest, make: (m: Mesh) => LayerLike, sizes: Record<string, { size: number }>, progress?: (text: string) => void): Promise<Assets> {
+export async function loadAssets(scene: Scene, man: Manifest, make: (m: Mesh, perColor?: boolean) => LayerLike, sizes: Record<string, { size: number }>, progress?: (text: string) => void): Promise<Assets> {
   const A: Assets = { units: {}, udur: {}, buildings: {}, staged: {}, textures: {}, layers: [] };
   const cache = new Map<string, LayerLike>(), libs = new Map<string, AssetContainer>();
   const staticLayer = async (file: string, footprint: number) => {
@@ -219,9 +266,9 @@ export async function loadAssets(scene: Scene, man: Manifest, make: (m: Mesh) =>
     A.udur[type] = got.durs;
     A.units[type] = {};
     for (const [k, list] of Object.entries(got.out)) {
-      const ls = list!.map((m) => make(m));
-      A.units[type][k as AnimKey] = ls;
-      A.layers.push(...ls);
+      const fr = list!.map((f) => ({ base: make(f.base), team: f.team ? make(f.team, true) : null }));
+      A.units[type][k as AnimKey] = fr;
+      for (const f of fr) A.layers.push(f.base, ...(f.team ? [f.team] : []));
     }
   }
   A.layers.push(...new Set(cache.values()));
