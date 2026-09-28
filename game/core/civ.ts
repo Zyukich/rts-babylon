@@ -27,7 +27,10 @@ export function identity(P: Player) {
   return cultureLevel(P, best) ? BRANCH[best].title : 'Юная';
 }
 
-export function recalc(P: Player) {
+/** Пересчитать бонусы игрока. С w — заодно поднять здоровье его юнитов и зданий, если вырос максимум
+ *  (иначе после роста поселения или технологии на прочность всё выглядело бы повреждённым) */
+export function recalc(P: Player, w?: World) {
+  const old = w ? new Map([...w.ents.values()].filter((e) => e.owner === P.id).map((e) => [e.id, maxHp(w, e)])) : null;
   const m = baseMods();
   for (const id of P.techs) for (const [k, v] of Object.entries(TECHS[id].fx)) m[k as keyof Mods] += v!;
   m.atkPct += 5 * cultureLevel(P, 'mil');
@@ -36,6 +39,12 @@ export function recalc(P: Player) {
   m.bldHp += 10 * cultureLevel(P, 'civ');
   m.gather += SETTLE_GATHER * P.settle; m.bldHp += SETTLE_HP * P.settle; // рост поселения
   P.mods = m;
+  if (w && old) for (const [id, was] of old) {
+    const e = w.ents.get(id)!, now = maxHp(w, e);
+    if (now === was || e.hp <= 0) continue; // погибший в этом тике не оживает
+    if (e.kind === 'b' && e.progress < BUILDINGS[e.type].time) e.hp = Math.min(now, Math.max(1, Math.round((e.hp * now) / was))); // стройка — пропорционально
+    else e.hp = Math.max(1, Math.min(now, e.hp + now - was)); // рост максимума — прибавка к здоровью; падение — не выше нового максимума
+  }
 }
 
 // ---------- Характеристики с учётом технологий и культуры ----------
@@ -89,7 +98,7 @@ export function addCulture(w: World, P: Player, b: Branch, n: number) {
   P.culture[b] += n;
   const after = cultureLevel(P, b);
   if (after > before) {
-    recalc(P);
+    recalc(P, w);
     chron(w, P.id, after === 1 ? `Зародилась ${BRANCH[b].cult} культура` : `${BRANCH[b].cult[0].toUpperCase() + BRANCH[b].cult.slice(1)} культура достигла ${after}-го уровня`);
   }
 }
@@ -97,7 +106,7 @@ export function research(w: World, P: Player, id: string) {
   const before = new Map<number, number>();
   for (const e of w.ents.values()) if (e.owner === P.id) before.set(e.id, maxHp(w, e));
   P.techs.push(id);
-  recalc(P);
+  recalc(P, w);
   for (const e of w.ents.values()) if (e.owner === P.id) e.hp += Math.max(0, maxHp(w, e) - before.get(e.id)!);
   chron(w, P.id, `Изобретено: ${TECHS[id].name}`);
   addCulture(w, P, 'sci', 4);
@@ -145,7 +154,7 @@ export function updSettle(w: World, P: Player) {
   for (const e of w.ents.values()) if (e.kind === 'b' && e.owner === P.id && e.type !== 'wall' && e.type !== 'gate' && e.progress >= BUILDINGS[e.type].time) n++;
   if (n < next.blds) return;
   P.settle++;
-  recalc(P);
+  recalc(P, w);
   chron(w, P.id, `${SETTLE[P.settle - 1].name} ${SETTLE[P.settle - 1].grew} в ${next.into}`);
   addCulture(w, P, 'civ', 5);
 }

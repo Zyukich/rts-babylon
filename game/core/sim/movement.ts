@@ -96,14 +96,31 @@ export function hug(w: World, u: Unit, cx: number, cy: number, radius: number) {
 
 // То же у здания: ближайшая точка на его краю — строители «облепляют» стройку
 export function hugRect(w: World, u: Unit, b: Building) {
-  if (u.sx === NOSPOT) {
+  if (u.sx === NOSPOT) { // место у стены здания: ближайшее к юниту, но не там, где уже стоит другой строитель
     const s = size(b) * TILE, x0 = b.tx * TILE - 220, y0 = b.ty * TILE - 220, x1 = b.tx * TILE + s + 220, y1 = b.ty * TILE + s + 220;
-    let px = Math.min(Math.max(u.x, x0), x1), py = Math.min(Math.max(u.y, y0), y1);
-    if (px > x0 && px < x1 && py > y0 && py < y1) {
-      const m = Math.min(px - x0, x1 - px, py - y0, y1 - py);
-      if (m === px - x0) px = x0; else if (m === x1 - px) px = x1; else if (m === py - y0) py = y0; else py = y1;
+    const taken: number[] = [];
+    for (const o of w.ents.values()) if (o !== u && o.kind === 'u' && o.owner === u.owner && o.sx !== NOSPOT && o.order.t === 'build' && o.order.target === b.id) taken.push(o.sx, o.sy);
+    const STEP = 420, per = 2 * (x1 - x0) + 2 * (y1 - y0);
+    let best = -1, bd = Infinity, bx = 0, by = 0;
+    for (let d = 0; d < per; d += STEP) { // точки по периметру
+      let px: number, py: number;
+      if (d < x1 - x0) { px = x0 + d; py = y0; } else if (d < x1 - x0 + (y1 - y0)) { px = x1; py = y0 + d - (x1 - x0); }
+      else if (d < 2 * (x1 - x0) + (y1 - y0)) { px = x1 - (d - (x1 - x0) - (y1 - y0)); py = y1; } else { px = x0; py = y1 - (d - 2 * (x1 - x0) - (y1 - y0)); }
+      let free = true;
+      for (let i = 0; i < taken.length && free; i += 2) if (Math.abs(taken[i] - px) < STEP - 20 && Math.abs(taken[i + 1] - py) < STEP - 20) free = false;
+      if (!free || !walkable(w, ((px / TILE) | 0) + ((py / TILE) | 0) * w.W)) continue;
+      const dd = Math.abs(px - u.x) + Math.abs(py - u.y);
+      if (dd < bd) { bd = dd; best = d; bx = px; by = py; }
     }
-    u.sx = px; u.sy = py;
+    if (best >= 0) { u.sx = bx; u.sy = by; }
+    else { // все места заняты — ближайшая точка у стены, как раньше
+      let px = Math.min(Math.max(u.x, x0), x1), py = Math.min(Math.max(u.y, y0), y1);
+      if (px > x0 && px < x1 && py > y0 && py < y1) {
+        const m = Math.min(px - x0, x1 - px, py - y0, y1 - py);
+        if (m === px - x0) px = x0; else if (m === x1 - px) px = x1; else if (m === py - y0) py = y0; else py = y1;
+      }
+      u.sx = px; u.sy = py;
+    }
   }
   return approach(w, u, u.sx, u.sy);
 }
