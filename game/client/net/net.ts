@@ -7,6 +7,8 @@ export interface NetSession {
   queue: { t: number; cmds: Command[] }[];
   send(c: Command): void;
   hash(t: number, h: string): void;
+  /** Карта загружена и отрисована — сервер запускает время, когда готовы все */
+  ready(): void;
   onDesync?: (t: number) => void;
   onNotice?: (text: string) => void; // «игрок вышел», «соединение потеряно»
 }
@@ -17,7 +19,8 @@ export interface LobbyEvents {
   error(msg: string): void;
 }
 
-export const defaultServer = () => `ws://${location.hostname}:8080`;
+/** Сервер по умолчанию: в разработке — отдельный процесс на :8080 (npm run server), на сайте — тот же адрес, путь /ws */
+export const defaultServer = (dev = false) => (dev ? `ws://${location.hostname}:8080` : `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
 
 /** Подключиться к комнате. Возвращает функции лобби: начать (хост) и закрыть соединение */
 export function joinRoom(url: string, room: string, name: string, ev: LobbyEvents) {
@@ -27,6 +30,7 @@ export function joinRoom(url: string, room: string, name: string, ev: LobbyEvent
     you: 0, seed: 0, n: 2, names: [], queue: [],
     send: (c) => { if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'cmd', cmd: c })); },
     hash: (t, h) => { if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'hash', t, h })); },
+    ready: () => { if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'ready' })); },
   };
   ws.onopen = () => ws.send(JSON.stringify({ type: 'join', room, name }));
   ws.onmessage = (e) => {

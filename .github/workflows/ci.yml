@@ -11,4 +11,4 @@ jobs:
       - run: npm run typecheck      # game/ + Nuxt
       - run: npm test               # детерминизм, фаззинг, эксплойты, механики, данные, сеть
       - run: npm run assets:check   # каталог ассетов без скачивания
-      - run: npm run build          # Nuxt собирается (без ассетов — процедурные модели)
+      - run: npm run generate       # статика игры собирается (без ассетов — процедурные модели)

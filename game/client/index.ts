@@ -100,6 +100,7 @@ export async function createGame(canvas: HTMLCanvasElement, opts: GameOptions): 
         if (++n < 3) return;
         ctx.stage.scene.onAfterRenderObservable.remove(obs);
         ready = true; progress('Готово', 1); opts.onReady?.();
+        if (net) { net.ready(); if (!net.queue.length && w.tick === 0) ctx.hud.setMessage('Ждём, пока загрузятся остальные игроки…'); }
       });
     });
 
@@ -109,6 +110,7 @@ export async function createGame(canvas: HTMLCanvasElement, opts: GameOptions): 
       net.onNotice = (t) => ctx.hud.setMessage(t);
     }
     function doStep(cmds: Command[]) {
+      if (w.tick === 0 && net) ctx.hud.setMessage(''); // время пошло — убираем «ждём игроков»
       ctx.ents.beforeStep();
       step(w, cmds);
       ctx.hud.onStep();

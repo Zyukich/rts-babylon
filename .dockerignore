@@ -1,0 +1,11 @@
+node_modules
+.nuxt
+.output
+.data
+.git
+.github
+.idea
+.claude
+public/assets
+assets/.cache
+*.tsbuildinfo

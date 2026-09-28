@@ -5,6 +5,7 @@
 //   npm run assets -- --force    перекачать и пересобрать всё
 //   npm run assets:check         только проверить каталог (без скачивания), код 1 при ошибках
 //   npm run assets:list -- <пак или файл>   какие модели в паке и какие у них анимации
+//   node scripts/assets/build.mjs --prune     собрать и удалить из public/assets всё, на что манифест не ссылается (для Docker)
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -16,7 +17,7 @@ const OUT = path.join(ROOT, 'public/assets');     // собранное (в git 
 const CACHE = path.join(SRC, '.cache');           // скачанные архивы паков
 const VERSION = 1;
 const argv = process.argv.slice(2), has = (f) => argv.includes(f);
-const FORCE = has('--force'), CHECK = has('--check'), IF_MISSING = has('--if-missing');
+const FORCE = has('--force'), CHECK = has('--check'), IF_MISSING = has('--if-missing'), PRUNE = has('--prune');
 const KEEP = /\.(gltf|glb|bin|png|jpe?g|webp|ktx2)$/i;
 const OWN = ['models', 'textures', 'sounds'];     // свои папки копируются как есть
 
@@ -186,6 +187,31 @@ function buildManifest(cat, hash) {
   return man;
 }
 
+// ---------- Оставить только нужное игре (образ Docker меньше в разы) ----------
+function prune(man) {
+  const keep = new Set(['manifest.json']);
+  const addModel = (p) => {
+    if (!p || keep.has(p)) return;
+    keep.add(p);
+    const abs = path.join(OUT, p);
+    try { // внешние .bin и картинки glTF
+      const j = readGltf(abs), dir = path.dirname(p);
+      for (const x of [...(j.buffers ?? []), ...(j.images ?? [])]) if (x.uri && !x.uri.startsWith('data:')) keep.add(path.posix.join(dir, decodeURIComponent(x.uri)));
+    } catch { /* не glTF */ }
+  };
+  for (const u of Object.values(man.units)) { addModel(u.file); for (const a of Object.values(u.anims)) addModel(a.file); if (u.rider) addModel(u.rider.file); }
+  for (const b of Object.values(man.buildings)) { (b.ages ?? []).flat(2).forEach(addModel); (b.colors ?? []).forEach(addModel); }
+  for (const t of Object.values(man.textures)) keep.add(t);
+  for (const s of Object.values(man.sounds)) keep.add(s.file);
+  let n = 0, bytes = 0;
+  for (const f of walk(OUT)) {
+    const r = path.relative(OUT, f).split(path.sep).join('/');
+    if (keep.has(r)) continue;
+    bytes += fs.statSync(f).size; fs.rmSync(f); n++;
+  }
+  console.log(`  ✂ удалено неиспользуемых файлов: ${n} (${(bytes / 1e6).toFixed(0)} МБ), осталось ${keep.size}`);
+}
+
 // ---------- Список моделей пака ----------
 function list(target) {
   const dir = fs.existsSync(path.join(OUT, target)) ? path.join(OUT, target) : fs.existsSync(target) ? target : null;
@@ -216,6 +242,7 @@ if (!CHECK) {
 }
 const man = buildManifest(cat, hash);
 if (!CHECK) fs.writeFileSync(path.join(OUT, 'manifest.json'), JSON.stringify(man, null, 1));
+if (PRUNE && !CHECK) prune(man);
 const total = (o) => Object.keys(strip(o)).length;
 console.log(`  Юниты с моделями: ${Object.keys(man.units).length}/${total(cat.units)} · здания: ${Object.keys(man.buildings).length}/${total(cat.buildings)} · текстуры: ${Object.keys(man.textures).join(', ') || '—'} · звуки: ${Object.keys(man.sounds).length}/${total(cat.sounds)} (остальные — синтез)`);
 for (const w of warnings) console.log(`  ⚠ ${w}`);

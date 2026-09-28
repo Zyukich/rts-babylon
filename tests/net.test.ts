@@ -18,7 +18,7 @@ function client(name: string, host: boolean) {
     ws.on('message', (raw) => {
       const m = JSON.parse(String(raw));
       if (m.type === 'lobby' && host && m.players.length === 2) ws.send(JSON.stringify({ type: 'start', ai: 'hard' }));
-      if (m.type === 'start') { w = createWorld(m.seed, m.n); me = m.you; }
+      if (m.type === 'start') { w = createWorld(m.seed, m.n); me = m.you; ws.send(JSON.stringify({ type: 'ready' })); } // «загрузились» — сервер запускает время
       if (m.type === 'desync') desync++;
       if (m.type !== 'tick' || !w) return;
       step(w, m.cmds); steps++;
@@ -40,4 +40,33 @@ describe('сетевая игра', () => {
     expect(a.hash).toBe(b.hash);
     expect(a.desync + b.desync).toBe(0);
   }, 40000);
+});
+
+describe('старт сетевой партии', () => {
+  it('время не идёт, пока все игроки не загрузились', async () => {
+    const connect = (name: string, host: boolean) => new Promise<{ ws: WebSocket; ticks: () => number }>((resolve, reject) => {
+      const ws = new WebSocket(`ws://localhost:${PORT}`);
+      let ticks = 0;
+      ws.on('error', reject);
+      ws.on('open', () => ws.send(JSON.stringify({ type: 'join', room: 'wait', name })));
+      ws.on('message', (raw) => {
+        const m = JSON.parse(String(raw));
+        if (m.type === 'lobby' && host && m.players.length === 2) ws.send(JSON.stringify({ type: 'start', ai: 'easy' }));
+        if (m.type === 'start') resolve({ ws, ticks: () => ticks });
+        if (m.type === 'tick') ticks++;
+      });
+    });
+    const a = connect('A', true), b = new Promise((r) => setTimeout(r, 200)).then(() => connect('B', false));
+    const [ca, cb] = await Promise.all([a, b]);
+    await new Promise((r) => setTimeout(r, 1500));
+    expect(ca.ticks()).toBe(0); // оба ещё «грузятся»
+    ca.ws.send(JSON.stringify({ type: 'ready' }));
+    await new Promise((r) => setTimeout(r, 800));
+    expect(ca.ticks()).toBe(0); // второй ещё не готов
+    cb.ws.send(JSON.stringify({ type: 'ready' }));
+    await new Promise((r) => setTimeout(r, 1500));
+    expect(ca.ticks()).toBeGreaterThan(5);
+    expect(cb.ticks()).toBe(ca.ticks());
+    ca.ws.close(); cb.ws.close();
+  }, 20000);
 });

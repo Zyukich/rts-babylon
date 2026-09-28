@@ -13,7 +13,13 @@ npm test               # тесты: детерминизм, фаззинг, э�
 npm run typecheck      # типы: game/ + Nuxt-приложение
 npm run demo           # headless-матч двух ботов в консоли
 npm run balance        # ~50 матчей ботов → сводка баланса (-- --quick — быстрее)
-npm run build          # production-сборка (.output/)
+npm run generate       # сборка игры в статику (.output/public)
+npm start              # сервер: игра + сетевая игра (WebSocket /ws) на одном порту
+```
+
+Выкладка в сеть (Coolify, Docker) — см. **DEPLOY.md**.
+
+```
 ```
 
 Витрина моделей: `/models` — все подключённые модели, анимации, цвет игрока.

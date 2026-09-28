@@ -9,7 +9,8 @@ export default defineNuxtConfig({
     head: {
       title: 'ЭПОХИ',
       htmlAttrs: { lang: 'ru' },
-      meta: [{ name: 'viewport', content: 'width=device-width, initial-scale=1' }],
+      meta: [{ name: 'viewport', content: 'width=device-width, initial-scale=1' }, { name: 'description', content: 'ЭПОХИ — браузерная стратегия в реальном времени: 8 эпох, экономика, дипломатия, сетевая игра' }, { name: 'theme-color', content: '#15110c' }],
+      link: [{ rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }],
     },
   },
   runtimeConfig: {
