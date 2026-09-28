@@ -154,6 +154,8 @@ const V = victoryJson;
 export const TERR_SHARE = V.territory.sharePercent, TERR_HOLD = ticks(V.territory.hold);
 export const ECO_TARGET = V.economy.target, CULT_TARGET = V.culture.target, FINAL_REQ = V.science.techsRequired;
 export const GOAL_HOLD = { eco: ticks(V.economy.hold), cult: ticks(V.culture.hold) };
+/** С какой эпохи возможна экономическая и культурная победа */
+export const GOAL_MIN_AGE = { eco: ageOf('victory.json → economy.minAge', V.economy.minAge), cult: ageOf('victory.json → culture.minAge', V.culture.minAge) };
 export const WIN_NAMES: Record<string, string> = V.names;
 
 // ---------- Культура, дипломатия ----------
@@ -172,6 +174,9 @@ export const AI_CFG = Object.fromEntries(Object.entries(AI_LEVELS).map(([k, v]) 
 export const AI_COUNTERS: Record<string, string[]> = aiJson.counters;
 export const AI_REGION_VALUE: Record<string, number> = aiJson.regionValue;
 export const AI_PERSONALITIES = aiJson.personalities as Branch[];
+const AD = aiJson.diplomacy;
+/** Дипломатия ботов (ai.json → diplomacy) */
+export const AI_DIPLO = { askPeace: AD.askPeace, minArmy: AD.minArmy, minPeace: ticks(AD.minPeace), breakPeace: AD.breakPeace as Record<Branch, number>, attackLeader: AD.attackLeader };
 for (const [c, list] of Object.entries(AI_COUNTERS)) for (const u of list) if (!UNITS[u]) fail(`ai.json → counters.${c}`, `нет юнита «${u}»`);
 
 // ---------- Имена для интерфейса и хроники ----------

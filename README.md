@@ -12,6 +12,7 @@ npm run assets:list -- quaternius-rts   # какие модели и анима�
 npm test               # тесты: детерминизм, фаззинг, эксплойты, механики, данные, сеть
 npm run typecheck      # типы: game/ + Nuxt-приложение
 npm run demo           # headless-матч двух ботов в консоли
+npm run balance        # ~50 матчей ботов → сводка баланса (-- --quick — быстрее)
 npm run build          # production-сборка (.output/)
 ```
 

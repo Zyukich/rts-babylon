@@ -1,5 +1,5 @@
 {
-  "$comment": "Условия победы; hold — сколько секунд удерживать",
+  "$comment": "Условия победы; hold — сколько секунд удерживать; minAge — с какой эпохи возможна",
   "names": {
     "mil": "Военная",
     "terr": "Территориальная",
@@ -12,14 +12,16 @@
     "hold": 180
   },
   "economy": {
-    "target": 6000,
-    "hold": 120
+    "target": 7000,
+    "hold": 120,
+    "minAge": "imperial"
   },
   "culture": {
-    "target": 550,
-    "hold": 180
+    "target": 900,
+    "hold": 180,
+    "minAge": "medieval"
   },
   "science": {
-    "techsRequired": 5
+    "techsRequired": 8
   }
 }

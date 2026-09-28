@@ -20,7 +20,8 @@ export class Bot {
   vis: Uint8Array | null = null; seen: Uint8Array | null = null;
   mem = new Map<number, string>(); // замеченные вражеские войска: id → класс
   peaceful = false; mkT = 0; dipT = -1e9; // dipT — когда бот последний раз сам предлагал мир // mkT — счётчик для редких сделок на рынке // дебаг-режим: бот развивается и обороняется, но в походы не ходит
-  constructor(p: number, level: Level = 'normal') { this.p = p; this.level = level; }
+  fav: Branch; // характер: какое направление развития любит (и насколько воинственен)
+  constructor(p: number, level: Level = 'normal', fav?: Branch) { this.p = p; this.level = level; this.fav = fav ?? FAV[p % FAV.length]; }
 
   diplomacy(w: World, out: Command[]) { botDiplomacy(this, w, out); }
 
@@ -217,7 +218,7 @@ export class Bot {
     if (tc && built(tc) && this.level !== 'easy' && P.age >= TECHS.enlightenment.age && P.techs.length >= FINAL_REQ && !queuedTechs(w, p).length && afford(TECHS.enlightenment.cost))
       out.push({ p, t: 'research', building: tc.id, tech: 'enlightenment' }); // сам идёт к научной победе
     if (tc && built(tc) && vills.length >= 8 && !saveAge && !queuedTechs(w, p).length && slotsLeft(w, P) > 0) {
-      const fav = FAV[p % 4];
+      const fav = this.fav;
       const opts = Object.entries(TECHS).filter(([id, t]) => t.age <= P.age && !t.final && !P.techs.includes(id) && afford(t.cost))
         .sort((a, b) => Number(b[1].branch === fav) - Number(a[1].branch === fav));
       if (opts.length) out.push({ p, t: 'research', building: tc.id, tech: opts[0][0] });

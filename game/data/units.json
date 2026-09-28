@@ -43,7 +43,7 @@
     "icon": "🔱",
     "class": "spear",
     "age": "ancient",
-    "hp": 45,
+    "hp": 55,
     "attack": 4,
     "armor": 1,
     "range": 1.5,
@@ -51,8 +51,8 @@
     "speed": 1.35,
     "sight": 6,
     "cost": {
-      "food": 40,
-      "wood": 30
+      "food": 35,
+      "wood": 25
     },
     "trainTime": 15,
     "bonus": {
@@ -200,8 +200,7 @@
     },
     "trainTime": 18,
     "bonus": {
-      "infantry": 150,
-      "cavalry": 120
+      "infantry": 150
     }
   },
   "knight": {

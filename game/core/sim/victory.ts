@@ -1,5 +1,5 @@
 // Победа: регионы и территория, мирные пути (экономика, культура, наука)
-import { RES, REGION_WEIGHT, TERR_SHARE, TERR_HOLD, CULT_TARGET, GOAL_HOLD, WIN_NAMES } from '../../data/index.ts';
+import { RES, REGION_WEIGHT, TERR_SHARE, TERR_HOLD, CULT_TARGET, GOAL_MIN_AGE, GOAL_HOLD, WIN_NAMES } from '../../data/index.ts';
 import { type World, type Building, type Goal } from '../world.ts';
 import { researchTime, chron, addCulture, BRANCHES } from '../civ.ts';
 import { done } from './common.ts';
@@ -23,8 +23,8 @@ export function updGoals(w: World) {
       if (e.queue[0] === '@enlightenment') sci = e;
     }
     const on = {
-      eco: w.victory.eco && RES.reduce((s, r) => s + P.res[r], 0) >= w.ecoTarget,
-      cult: w.victory.cult && hasTc && BRANCHES.reduce((s, b) => s + P.culture[b], 0) >= CULT_TARGET,
+      eco: w.victory.eco && P.age >= GOAL_MIN_AGE.eco && RES.reduce((s, r) => s + P.res[r], 0) >= w.ecoTarget,
+      cult: w.victory.cult && hasTc && P.age >= GOAL_MIN_AGE.cult && BRANCHES.reduce((s, b) => s + P.culture[b], 0) >= CULT_TARGET,
       sci: !!sci && w.victory.sci,
     };
     for (const k of ['eco', 'cult', 'sci'] as Goal['kind'][]) {
