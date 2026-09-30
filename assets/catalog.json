@@ -1034,5 +1034,116 @@
         "woodpile"
       ]
     }
+  },
+  "nature": {
+    "$comment": "Природа, ресурсы и быт: ключ (как в игре) → модель из assets/models/nature (делает tools/blender/nature.py). wind — сила ветра (0 — неподвижно). Цвет — в вершинах модели",
+    "pineT": {
+      "file": "models/nature/pineT.glb"
+    },
+    "pineL": {
+      "file": "models/nature/pineL.glb",
+      "wind": 0.02
+    },
+    "oakT": {
+      "file": "models/nature/oakT.glb"
+    },
+    "oakL": {
+      "file": "models/nature/oakL.glb",
+      "wind": 0.03
+    },
+    "oakY": {
+      "file": "models/nature/oakY.glb",
+      "wind": 0.03
+    },
+    "oakO": {
+      "file": "models/nature/oakO.glb",
+      "wind": 0.03
+    },
+    "birchT": {
+      "file": "models/nature/birchT.glb"
+    },
+    "birchL": {
+      "file": "models/nature/birchL.glb",
+      "wind": 0.035
+    },
+    "bush": {
+      "file": "models/nature/bush.glb",
+      "wind": 0.1
+    },
+    "berry": {
+      "file": "models/nature/berry.glb",
+      "wind": 0.1
+    },
+    "rock0": {
+      "file": "models/nature/rock0.glb"
+    },
+    "rock1": {
+      "file": "models/nature/rock1.glb"
+    },
+    "rock2": {
+      "file": "models/nature/rock2.glb"
+    },
+    "ore0": {
+      "file": "models/nature/ore0.glb"
+    },
+    "ore1": {
+      "file": "models/nature/ore1.glb"
+    },
+    "ore2": {
+      "file": "models/nature/ore2.glb"
+    },
+    "gold0": {
+      "file": "models/nature/gold0.glb"
+    },
+    "gold1": {
+      "file": "models/nature/gold1.glb"
+    },
+    "gold2": {
+      "file": "models/nature/gold2.glb"
+    },
+    "wheat": {
+      "file": "models/nature/wheat.glb",
+      "wind": 0.25
+    },
+    "soil": {
+      "file": "models/nature/soil.glb"
+    },
+    "stump": {
+      "file": "models/nature/stump.glb"
+    },
+    "log": {
+      "file": "models/nature/log.glb"
+    },
+    "fern": {
+      "file": "models/nature/fern.glb",
+      "wind": 0.25
+    },
+    "mushroom": {
+      "file": "models/nature/mushroom.glb"
+    },
+    "pebbles": {
+      "file": "models/nature/pebbles.glb"
+    },
+    "crate": {
+      "file": "models/nature/crate.glb"
+    },
+    "barrel": {
+      "file": "models/nature/barrel.glb"
+    },
+    "sack": {
+      "file": "models/nature/sack.glb"
+    },
+    "cart": {
+      "file": "models/nature/cart.glb"
+    },
+    "fence": {
+      "file": "models/nature/fence.glb"
+    },
+    "woodpile": {
+      "file": "models/nature/woodpile.glb"
+    },
+    "hay": {
+      "file": "models/nature/hay.glb"
+    }
   }
 }

@@ -135,7 +135,7 @@ async function prepareTexture(key, t) {
 
 // ---------- Манифест ----------
 function buildManifest(cat, hash) {
-  const packs = strip(cat.packs), man = { version: VERSION, catalog: hash, units: {}, buildings: {}, textures: {}, sounds: {} };
+  const packs = strip(cat.packs), man = { version: VERSION, catalog: hash, units: {}, buildings: {}, textures: {}, sounds: {}, nature: {} };
   const globRe = (p) => new RegExp(`^${p.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`);
   for (const [type, u] of Object.entries(strip(cat.units))) {
     if (!u.model) continue;
@@ -176,6 +176,10 @@ function buildManifest(cat, hash) {
     if (b.colors) { const c = b.colors.map((f, i) => model(f, packs, `здание ${type} [цвет ${i}]`)).filter(Boolean); if (c.length) out.colors = c; }
     if (out.ages || out.colors) man.buildings[type] = out;
   }
+  for (const [key, n] of Object.entries(strip(cat.nature))) { // природа и быт: ключ → файл (+ ветер)
+    const f = n?.file && model(n.file, packs, `природа ${key}`);
+    if (f) man.nature[key] = { file: f, ...(n.wind ? { wind: n.wind } : {}) };
+  }
   for (const [key, t] of Object.entries(strip(cat.textures))) {
     const p = t.file ? t.file : `textures/${key}.jpg`;
     if (fs.existsSync(path.join(OUT, p))) man.textures[key] = p; else if (t.file) err(`текстура ${key}: нет файла assets/${t.file}`);
@@ -202,6 +206,7 @@ function prune(man) {
   for (const u of Object.values(man.units)) { addModel(u.file); for (const a of Object.values(u.anims)) addModel(a.file); if (u.rider) addModel(u.rider.file); }
   for (const b of Object.values(man.buildings)) { (b.ages ?? []).flat(2).forEach(addModel); (b.colors ?? []).forEach(addModel); }
   for (const t of Object.values(man.textures)) keep.add(t);
+  for (const n of Object.values(man.nature)) addModel(n.file);
   for (const s of Object.values(man.sounds)) keep.add(s.file);
   let n = 0, bytes = 0;
   for (const f of walk(OUT)) {
@@ -244,7 +249,7 @@ const man = buildManifest(cat, hash);
 if (!CHECK) fs.writeFileSync(path.join(OUT, 'manifest.json'), JSON.stringify(man, null, 1));
 if (PRUNE && !CHECK) prune(man);
 const total = (o) => Object.keys(strip(o)).length;
-console.log(`  Юниты с моделями: ${Object.keys(man.units).length}/${total(cat.units)} · здания: ${Object.keys(man.buildings).length}/${total(cat.buildings)} · текстуры: ${Object.keys(man.textures).join(', ') || '—'} · звуки: ${Object.keys(man.sounds).length}/${total(cat.sounds)} (остальные — синтез)`);
+console.log(`  Юниты с моделями: ${Object.keys(man.units).length}/${total(cat.units)} · здания: ${Object.keys(man.buildings).length}/${total(cat.buildings)} · текстуры: ${Object.keys(man.textures).join(', ') || '—'} · звуки: ${Object.keys(man.sounds).length}/${total(cat.sounds)} (остальные — синтез) · природа: ${Object.keys(man.nature).length}/${total(cat.nature)}`);
 for (const w of warnings) console.log(`  ⚠ ${w}`);
 for (const e of errors) console.log(`  ✖ ${e}`);
 console.log(errors.length ? `Ошибок: ${errors.length}. Исправьте assets/catalog.json` : `Готово${CHECK ? '' : ` → ${rel(path.join(OUT, 'manifest.json'))}`}. Чего нет — рисуется процедурно.`);

@@ -74,6 +74,7 @@ export async function createGame(canvas: HTMLCanvasElement, opts: GameOptions): 
     await new Promise((r) => setTimeout(r, 0));
     void loadSounds(man?.sounds, ASSETS_ROOT);
     for (const l of ctx.assets?.layers ?? []) ctx.stage.shadow.addShadowCaster(l.mesh);
+    ctx.models.useNature(ctx.assets);
     ctx.ground = useGround(ctx);
     ctx.skirt = useSkirt(ctx);
     ctx.blades = useBlades(ctx);

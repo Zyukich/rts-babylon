@@ -1,7 +1,8 @@
 // Модели на сцене: процедурные (запасные) по типам, служебные слои (выделение, полоски, флаги, эффекты) и природа.
 import { MeshBuilder, Color3, type StandardMaterial } from '@babylonjs/core';
 import { makeModels } from './models/procedural.ts';
-import { makeNature } from './models/nature.ts';
+import { makeNature, natureMaterial } from './models/nature.ts';
+import type { Assets } from '../assets/loader.ts';
 import type { Layer } from './layers.ts';
 import type { GameContext } from '../context.ts';
 
@@ -41,11 +42,22 @@ export function useModels(ctx: GameContext) {
     if (!['berry', 'soil', 'fern', 'pebbles', 'mushroom'].includes(k) && !k.startsWith('grass')) shadow.addShadowCaster(m);
   }
 
+  /** Природа из файлов (assets/models/nature) вместо процедурной — ключ в ключ */
+  const SMALL = new Set(['berry', 'soil', 'fern', 'pebbles', 'mushroom', 'wheat']); // мелочь — без теней
+  function useNature(A: Assets | null) {
+    for (const [k, { mesh, wind }] of Object.entries(A?.nature ?? {})) {
+      NL[k]?.mesh.dispose(false, true);
+      mesh.material = natureMaterial(scene, 'n_' + k, wind, k.endsWith('L') || k.startsWith('oak') ? 0.5 : 0);
+      NL[k] = layer(mesh, null);
+      if (!SMALL.has(k)) shadow.addShadowCaster(mesh);
+    }
+  }
+
   /** Процедурная модель: основа + часть в цвете игрока (sy — сплющить по высоте) */
   function addModel(type: string, x: number, y: number, z: number, yaw: number, s: number, col: number[], sy = 1, noTeam = false) {
     const [b, t] = MODELS[type] ?? [null, null];
     b?.add(x, y, z, s, s * sy, s, undefined, yaw);
     if (!noTeam) t?.add(x, y, z, s, s * sy, s, col, yaw);
   }
-  return { MODELS, L, NL, addModel };
+  return { MODELS, L, NL, addModel, useNature };
 }
