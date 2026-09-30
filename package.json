@@ -14,7 +14,10 @@
     "demo": "node --experimental-strip-types --no-warnings scripts/demo.ts",
     "typecheck": "tsc -p tsconfig.game.json && nuxt typecheck",
     "test": "vitest run",
-    "check": "npm run typecheck && npm test && npm run assets:check"
+    "check": "npm run typecheck && npm test && npm run assets:check",
+    "balance": "node --experimental-strip-types --no-warnings scripts/balance.ts",
+    "generate": "nuxt generate",
+    "start": "node --experimental-strip-types --no-warnings game/server/index.ts"
   },
   "dependencies": {
     "@babylonjs/core": "^8.0.0",

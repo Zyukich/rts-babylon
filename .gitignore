@@ -7,3 +7,4 @@ public/assets
 .data
 *.tsbuildinfo
 assets/.cache
+dist

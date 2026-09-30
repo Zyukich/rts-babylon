@@ -23,7 +23,7 @@ const emit = defineEmits<{ again: []; exit: [] }>();
 </template>
 
 <style scoped>
-.end { position: fixed; inset: 5% 20%; overflow: auto; background: #15110cf2; border: 2px solid var(--gold); border-radius: 8px; padding: 16px 28px; z-index: 20; text-align: center; }
-.chron { text-align: left; max-width: 520px; margin: 0 auto; line-height: 1.6; }
-.acts { display: flex; gap: 12px; justify-content: center; }
+.end { position: fixed; inset: 5% max(4vw, calc(50vw - var(--u) * 420)); overflow: auto; background: #15110cf2; border: calc(var(--u) * 2) solid var(--gold); border-radius: calc(var(--u) * 8); padding: calc(var(--u) * 16) calc(var(--u) * 28); z-index: 20; text-align: center; }
+.chron { text-align: left; max-width: calc(var(--u) * 520); margin: 0 auto; line-height: 1.6; }
+.acts { display: flex; gap: calc(var(--u) * 12); justify-content: center; }
 </style>

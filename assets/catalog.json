@@ -16,21 +16,41 @@
       "zip": "packs/Ultimate Fantasy RTS.zip",
       "license": "CC0",
       "site": "https://quaternius.com/packs/ultimatefantasyrts.html"
+    },
+    "kaykit-space": {
+      "url": "https://github.com/KayKit-Game-Assets/KayKit-Space-Base-Bits-1.0/archive/refs/heads/main.zip",
+      "stripRoot": true,
+      "license": "CC0"
+    },
+    "kenney-fps": {
+      "url": "https://github.com/KenneyNL/Starter-Kit-FPS/archive/refs/heads/main.zip",
+      "stripRoot": true,
+      "license": "модели Kenney — CC0 (код набора — MIT)"
+    },
+    "quaternius-shooter": {
+      "zip": "packs/Toon Shooter Game Kit.zip",
+      "license": "CC0",
+      "site": "https://quaternius.com/packs/toonshootergamekit.html"
+    },
+    "quaternius-animals": {
+      "zip": "packs/Ultimate Animated Animal Pack.zip",
+      "license": "CC0",
+      "site": "https://quaternius.com/packs/ultimateanimatedanimals.html"
     }
   },
   "style": {
-    "$comment": "Общий вид: масштаб юнитов и деревьев, какой набор зданий пака на какой эпохе, палитра земли, кадры запечённых анимаций",
+    "$comment": "Общий вид: масштаб юнитов и деревьев, какой набор зданий на какой эпохе (0 — первобытные из tools/blender, 1–2 — пак Quaternius), палитра земли, кадры запечённых анимаций",
     "unitScale": 0.72,
     "treeScale": 1.4,
     "ageTier": [
       0,
-      0,
       1,
       1,
-      1,
-      1,
-      1,
-      1
+      2,
+      2,
+      2,
+      2,
+      2
     ],
     "animFrames": {
       "idle": 12,
@@ -85,35 +105,22 @@
     }
   },
   "textures": {
-    "$comment": "Земля. polyhaven — slug-и с polyhaven.com по очереди (скачается 1k jpg + карта нормалей), file — свой файл из assets/textures",
+    "$comment": "Земля. file — свой файл из assets/textures (лежит в репозитории — сборка не зависит от внешних сайтов); polyhaven — скачать по slug с polyhaven.com (CC0)",
     "grass": {
-      "polyhaven": [
-        "aerial_grass_rock",
-        "leafy_grass",
-        "grass_path_2"
-      ]
+      "file": "textures/grass.jpg",
+      "source": "polyhaven.com/a/aerial_grass_rock (CC0)"
     },
     "rock": {
-      "polyhaven": [
-        "rocky_terrain_02",
-        "aerial_rocks_02",
-        "rock_face"
-      ]
+      "file": "textures/rock.jpg",
+      "source": "polyhaven.com/a/rocky_terrain_02 (CC0)"
     },
     "sand": {
-      "polyhaven": [
-        "coast_sand_01",
-        "aerial_beach_01",
-        "sand_01"
-      ]
+      "file": "textures/sand.jpg",
+      "source": "polyhaven.com/a/coast_sand_01 (CC0)"
     },
     "dirt": {
-      "polyhaven": [
-        "forrest_ground_01",
-        "brown_mud_leaves_01",
-        "dry_ground_01",
-        "rocky_trail"
-      ]
+      "file": "textures/dirt.jpg",
+      "source": "polyhaven.com/a/forrest_ground_01 (CC0)"
     }
   },
   "sounds": {
@@ -158,120 +165,430 @@
   "units": {
     "$comment": "height — высота для полоски здоровья и рамки выделения (в ростах); model — файл; anims — idle/walk/attack/shoot/work/die: имя клипа в файле или { file, name } из другого файла",
     "villager": {
-      "model": "kaykit-adventurers:addons/kaykit_character_pack_adventures/Characters/gltf/Rogue_Hooded.glb",
+      "model": "models/units/villager.glb",
+      "team": [
+        "Team"
+      ],
       "anims": {
-        "idle": "Idle",
-        "walk": "Walking_A",
-        "attack": "1H_Melee_Attack_Chop",
-        "shoot": "2H_Ranged_Shoot",
-        "work": "Interact",
-        "die": "Death_A"
+        "idle": "idle",
+        "walk": "walk",
+        "attack": "attack",
+        "work": "work",
+        "die": "die"
       }
     },
     "clubman": {
-      "model": "kaykit-adventurers:addons/kaykit_character_pack_adventures/Characters/gltf/Barbarian.glb",
+      "model": "models/units/clubman.glb",
+      "team": [
+        "Team"
+      ],
       "anims": {
-        "idle": "Idle",
-        "walk": "Walking_A",
-        "attack": "1H_Melee_Attack_Chop",
-        "shoot": "2H_Ranged_Shoot",
-        "work": "Interact",
-        "die": "Death_A"
+        "idle": "idle",
+        "walk": "walk",
+        "attack": "attack",
+        "work": "work",
+        "die": "die"
       }
     },
     "spearman": {
       "model": "kaykit-adventurers:addons/kaykit_character_pack_adventures/Characters/gltf/Knight.glb",
+      "parts": [
+        "Knight_ArmLeft",
+        "Knight_ArmRight",
+        "Knight_Body",
+        "Knight_Head",
+        "Knight_LegLeft",
+        "Knight_LegRight",
+        "Knight_Cape",
+        "1H_Sword",
+        "Round_Shield"
+      ],
+      "team": [
+        "Knight_Cape"
+      ],
       "anims": {
         "idle": "Idle",
         "walk": "Walking_A",
-        "attack": "1H_Melee_Attack_Chop",
-        "shoot": "2H_Ranged_Shoot",
-        "work": "Interact",
-        "die": "Death_A"
+        "die": "Death_A",
+        "attack": "1H_Melee_Attack_Stab"
       }
     },
     "archer": {
       "model": "kaykit-adventurers:addons/kaykit_character_pack_adventures/Characters/gltf/Rogue.glb",
+      "parts": [
+        "Rogue_ArmLeft",
+        "Rogue_ArmRight",
+        "Rogue_Body",
+        "Rogue_Head",
+        "Rogue_LegLeft",
+        "Rogue_LegRight",
+        "Rogue_Cape",
+        "2H_Crossbow"
+      ],
+      "team": [
+        "Rogue_Cape"
+      ],
       "anims": {
         "idle": "Idle",
         "walk": "Walking_A",
-        "attack": "1H_Melee_Attack_Chop",
-        "shoot": "2H_Ranged_Shoot",
-        "work": "Interact",
-        "die": "Death_A"
+        "die": "Death_A",
+        "attack": "1H_Melee_Attack_Stab",
+        "shoot": "2H_Ranged_Shoot"
       }
     },
     "swordsman": {
       "model": "kaykit-adventurers:addons/kaykit_character_pack_adventures/Characters/gltf/Knight.glb",
+      "parts": [
+        "Knight_ArmLeft",
+        "Knight_ArmRight",
+        "Knight_Body",
+        "Knight_Head",
+        "Knight_LegLeft",
+        "Knight_LegRight",
+        "Knight_Cape",
+        "Knight_Helmet",
+        "1H_Sword",
+        "Badge_Shield"
+      ],
+      "team": [
+        "Knight_Cape"
+      ],
       "anims": {
         "idle": "Idle",
         "walk": "Walking_A",
-        "attack": "1H_Melee_Attack_Chop",
-        "shoot": "2H_Ranged_Shoot",
-        "work": "Interact",
-        "die": "Death_A"
+        "die": "Death_A",
+        "attack": "1H_Melee_Attack_Slice_Diagonal"
       }
     },
     "hunter": {
-      "model": "kaykit-adventurers:addons/kaykit_character_pack_adventures/Characters/gltf/Barbarian.glb",
+      "model": "models/units/hunter.glb",
+      "team": [
+        "Team"
+      ],
       "anims": {
-        "idle": "Idle",
-        "walk": "Walking_A",
-        "attack": "1H_Melee_Attack_Chop",
-        "shoot": "2H_Ranged_Shoot",
-        "work": "Interact",
-        "die": "Death_A"
+        "idle": "idle",
+        "walk": "walk",
+        "attack": "attack",
+        "work": "work",
+        "die": "die",
+        "shoot": "shoot"
       }
     },
     "scout": {
-      "height": 1.5
+      "height": 1.5,
+      "model": "quaternius-animals:glTF/Horse.gltf",
+      "length": 1.3,
+      "anims": {
+        "idle": "Idle",
+        "walk": "Gallop",
+        "attack": "Attack_Kick",
+        "die": "Death",
+        "work": "Eating"
+      },
+      "rider": {
+        "file": "kaykit-adventurers:addons/kaykit_character_pack_adventures/Characters/gltf/Rogue.glb",
+        "anim": "Sit_Chair_Idle",
+        "bone": "Back",
+        "parts": [
+          "Rogue_ArmLeft",
+          "Rogue_ArmRight",
+          "Rogue_Body",
+          "Rogue_Head",
+          "Rogue_LegLeft",
+          "Rogue_LegRight",
+          "Rogue_Cape",
+          "Knife"
+        ],
+        "team": [
+          "Rogue_Cape"
+        ],
+        "offset": [
+          0,
+          -0.04,
+          0.14
+        ],
+        "rotate": 0,
+        "scale": 0.55
+      }
     },
-    "trader": {},
+    "trader": {
+      "model": "quaternius-animals:glTF/Donkey.gltf",
+      "length": 0.85,
+      "anims": {
+        "idle": "Idle",
+        "walk": "Walk",
+        "attack": "Attack_Headbutt",
+        "die": "Death",
+        "work": "Eating"
+      }
+    },
     "legionary": {
       "model": "kaykit-adventurers:addons/kaykit_character_pack_adventures/Characters/gltf/Knight.glb",
+      "parts": [
+        "Knight_ArmLeft",
+        "Knight_ArmRight",
+        "Knight_Body",
+        "Knight_Head",
+        "Knight_LegLeft",
+        "Knight_LegRight",
+        "Knight_Cape",
+        "Knight_Helmet",
+        "1H_Sword",
+        "Rectangle_Shield"
+      ],
+      "team": [
+        "Knight_Cape"
+      ],
       "anims": {
         "idle": "Idle",
         "walk": "Walking_A",
-        "attack": "1H_Melee_Attack_Chop",
-        "shoot": "2H_Ranged_Shoot",
-        "work": "Interact",
-        "die": "Death_A"
+        "die": "Death_A",
+        "attack": "1H_Melee_Attack_Stab"
       }
     },
     "crossbowman": {
-      "model": "kaykit-adventurers:addons/kaykit_character_pack_adventures/Characters/gltf/Rogue.glb",
+      "model": "kaykit-adventurers:addons/kaykit_character_pack_adventures/Characters/gltf/Rogue_Hooded.glb",
+      "parts": [
+        "Rogue_ArmLeft",
+        "Rogue_ArmRight",
+        "Rogue_Body",
+        "Rogue_Head_Hooded",
+        "Rogue_LegLeft",
+        "Rogue_LegRight",
+        "Rogue_Cape",
+        "1H_Crossbow",
+        "Knife_Offhand"
+      ],
+      "team": [
+        "Rogue_Cape"
+      ],
       "anims": {
         "idle": "Idle",
         "walk": "Walking_A",
-        "attack": "1H_Melee_Attack_Chop",
-        "shoot": "2H_Ranged_Shoot",
-        "work": "Interact",
-        "die": "Death_A"
+        "die": "Death_A",
+        "attack": "1H_Melee_Attack_Stab",
+        "shoot": "1H_Ranged_Shoot"
       }
     },
     "knight": {
-      "height": 1.6
+      "height": 1.6,
+      "model": "quaternius-animals:glTF/Horse_White.gltf",
+      "length": 1.3,
+      "anims": {
+        "idle": "Idle",
+        "walk": "Gallop",
+        "attack": "Attack_Kick",
+        "die": "Death",
+        "work": "Eating"
+      },
+      "rider": {
+        "file": "kaykit-adventurers:addons/kaykit_character_pack_adventures/Characters/gltf/Knight.glb",
+        "anim": "Sit_Chair_Idle",
+        "bone": "Back",
+        "parts": [
+          "Knight_ArmLeft",
+          "Knight_ArmRight",
+          "Knight_Body",
+          "Knight_Head",
+          "Knight_LegLeft",
+          "Knight_LegRight",
+          "Knight_Cape",
+          "Knight_Helmet",
+          "1H_Sword",
+          "Badge_Shield"
+        ],
+        "team": [
+          "Knight_Cape"
+        ],
+        "offset": [
+          0,
+          -0.04,
+          0.14
+        ],
+        "rotate": 0,
+        "scale": 0.55
+      }
     },
     "horseman": {
-      "height": 1.5
+      "height": 1.5,
+      "model": "quaternius-animals:glTF/Horse.gltf",
+      "length": 1.3,
+      "anims": {
+        "idle": "Idle",
+        "walk": "Gallop",
+        "attack": "Attack_Kick",
+        "die": "Death",
+        "work": "Eating"
+      },
+      "rider": {
+        "file": "kaykit-adventurers:addons/kaykit_character_pack_adventures/Characters/gltf/Knight.glb",
+        "anim": "Sit_Chair_Idle",
+        "bone": "Back",
+        "parts": [
+          "Knight_ArmLeft",
+          "Knight_ArmRight",
+          "Knight_Body",
+          "Knight_Head",
+          "Knight_LegLeft",
+          "Knight_LegRight",
+          "Knight_Cape",
+          "1H_Sword",
+          "Round_Shield"
+        ],
+        "team": [
+          "Knight_Cape"
+        ],
+        "offset": [
+          0,
+          -0.04,
+          0.14
+        ],
+        "rotate": 0,
+        "scale": 0.55
+      }
     },
-    "cow": {},
-    "musketeer": {},
+    "cow": {
+      "model": "models/units/cow.glb",
+      "length": 0.9,
+      "team": [
+        "Team"
+      ],
+      "anims": {
+        "idle": "idle",
+        "walk": "walk",
+        "attack": "attack",
+        "work": "work",
+        "die": "die"
+      }
+    },
+    "musketeer": {
+      "model": "quaternius-shooter:Characters/Character_Enemy.gltf",
+      "parts": [
+        "Character_Enemy",
+        "Character_Enemy_Head",
+        "Sniper_2"
+      ],
+      "team": [
+        "Enemy_Red"
+      ],
+      "anims": {
+        "idle": "Idle",
+        "walk": "Walk",
+        "attack": "Punch",
+        "shoot": "Idle_Shoot",
+        "die": "Death"
+      }
+    },
     "cuirassier": {
-      "height": 1.6
+      "height": 1.6,
+      "model": "quaternius-animals:glTF/Horse_White.gltf",
+      "length": 1.3,
+      "anims": {
+        "idle": "Idle",
+        "walk": "Gallop",
+        "attack": "Attack_Kick",
+        "die": "Death",
+        "work": "Eating"
+      },
+      "rider": {
+        "file": "kaykit-adventurers:addons/kaykit_character_pack_adventures/Characters/gltf/Knight.glb",
+        "anim": "Sit_Chair_Idle",
+        "bone": "Back",
+        "parts": [
+          "Knight_ArmLeft",
+          "Knight_ArmRight",
+          "Knight_Body",
+          "Knight_Head",
+          "Knight_LegLeft",
+          "Knight_LegRight",
+          "Knight_Cape",
+          "Knight_Helmet",
+          "2H_Sword"
+        ],
+        "team": [
+          "Knight_Cape"
+        ],
+        "offset": [
+          0,
+          -0.04,
+          0.14
+        ],
+        "rotate": 0,
+        "scale": 0.55
+      }
     },
     "cannon": {
       "height": 0.8
     },
-    "rifleman": {},
-    "machinegunner": {},
+    "rifleman": {
+      "model": "quaternius-shooter:Characters/Character_Soldier.gltf",
+      "parts": [
+        "Head",
+        "ShoulderPad.L",
+        "ShoulderPad.R",
+        "Body",
+        "Sniper"
+      ],
+      "team": [
+        "Character_Main",
+        "ShoulderPad.*"
+      ],
+      "anims": {
+        "idle": "Idle",
+        "walk": "Walk",
+        "attack": "Punch",
+        "shoot": "Idle_Shoot",
+        "die": "Death"
+      }
+    },
+    "machinegunner": {
+      "model": "quaternius-shooter:Characters/Character_Soldier.gltf",
+      "parts": [
+        "Head",
+        "ShoulderPad.L",
+        "ShoulderPad.R",
+        "Body",
+        "SMG"
+      ],
+      "team": [
+        "Character_Main",
+        "ShoulderPad.*"
+      ],
+      "anims": {
+        "idle": "Idle",
+        "walk": "Walk",
+        "attack": "Punch",
+        "shoot": "Idle_Shoot",
+        "die": "Death"
+      }
+    },
     "artillery": {
       "height": 0.9
     },
     "tank": {
       "height": 1.0
     },
-    "bazooka": {},
+    "bazooka": {
+      "model": "quaternius-shooter:Characters/Character_Soldier.gltf",
+      "parts": [
+        "Head",
+        "ShoulderPad.L",
+        "ShoulderPad.R",
+        "Body",
+        "RocketLauncher"
+      ],
+      "team": [
+        "Character_Main",
+        "ShoulderPad.*"
+      ],
+      "anims": {
+        "idle": "Idle",
+        "walk": "Walk",
+        "attack": "Punch",
+        "shoot": "Idle_Shoot",
+        "die": "Death"
+      }
+    },
     "aa_gun": {
       "height": 1.0
     },
@@ -281,9 +598,31 @@
     "bomber": {
       "height": 0.6
     },
-    "marine": {},
+    "marine": {
+      "model": "quaternius-shooter:Characters/Character_Soldier.gltf",
+      "parts": [
+        "Head",
+        "ShoulderPad.L",
+        "ShoulderPad.R",
+        "Body",
+        "AK"
+      ],
+      "team": [
+        "Character_Main",
+        "ShoulderPad.*"
+      ],
+      "anims": {
+        "idle": "Idle",
+        "walk": "Walk",
+        "attack": "Punch",
+        "shoot": "Idle_Shoot",
+        "die": "Death"
+      }
+    },
     "apc": {
-      "height": 0.9
+      "height": 0.9,
+      "model": "kaykit-space:addons/kaykit_space_base_bits/Assets/gltf/spacetruck.gltf",
+      "length": 1.3
     },
     "mlrs": {
       "height": 1.0
@@ -297,9 +636,28 @@
     "helicopter": {
       "height": 0.7
     },
-    "laser_trooper": {},
+    "laser_trooper": {
+      "model": "quaternius-shooter:Characters/Character_Hazmat.gltf",
+      "parts": [
+        "Character_Hazmat",
+        "Character_Hazmat_Head",
+        "ShortCannon"
+      ],
+      "team": [
+        "Hazmat_Main"
+      ],
+      "anims": {
+        "idle": "Idle",
+        "walk": "Walk",
+        "attack": "Punch",
+        "shoot": "Idle_Shoot",
+        "die": "Death"
+      }
+    },
     "drone": {
-      "height": 0.3
+      "height": 0.3,
+      "model": "kenney-fps:models/enemy-flying.glb",
+      "length": 0.7
     },
     "mech": {
       "height": 1.5
@@ -312,7 +670,7 @@
     }
   },
   "buildings": {
-    "$comment": "height — высота корпуса; scale — [ширина, высота]; flag — флаг владельца; props — быт вокруг; ages — [эпоха пака][вариант][стадия стройки]; colors — модели по цветам игроков (если нет ages)",
+    "$comment": "height — высота корпуса; scale — [ширина, высота]; flag — флаг владельца; props — быт вокруг; ages — [эпоха пака][вариант][стадия стройки]; colors — модели по цветам игроков (если нет ages) fromTier — с какой ступени style.ageTier начинается список ages (у зданий без первобытного вида — 1).",
     "town_center": {
       "height": 3,
       "scale": [
@@ -327,6 +685,13 @@
         "crate"
       ],
       "ages": [
+        [
+          [
+            "models/primitive/town_center_s0.glb",
+            "models/primitive/town_center_s1.glb",
+            "models/primitive/town_center_s2.glb"
+          ]
+        ],
         [
           [
             "quaternius-rts:glTF/TowerHouse_FirstAge.gltf"
@@ -354,6 +719,23 @@
         "woodpile"
       ],
       "ages": [
+        [
+          [
+            "models/primitive/house_0_s0.glb",
+            "models/primitive/house_0_s1.glb",
+            "models/primitive/house_0_s2.glb"
+          ],
+          [
+            "models/primitive/house_1_s0.glb",
+            "models/primitive/house_1_s1.glb",
+            "models/primitive/house_1_s2.glb"
+          ],
+          [
+            "models/primitive/house_2_s0.glb",
+            "models/primitive/house_2_s1.glb",
+            "models/primitive/house_2_s2.glb"
+          ]
+        ],
         [
           [
             "quaternius-rts:glTF/Houses_FirstAge_1_Level1.gltf",
@@ -398,7 +780,16 @@
     },
     "farm": {
       "height": 0.3,
-      "flag": false
+      "flag": false,
+      "ages": [
+        [
+          [
+            "models/primitive/farm_s0.glb",
+            "models/primitive/farm_s1.glb",
+            "models/primitive/farm_s2.glb"
+          ]
+        ]
+      ]
     },
     "pasture": {
       "height": 0.6,
@@ -409,6 +800,13 @@
         "cart"
       ],
       "ages": [
+        [
+          [
+            "models/primitive/pasture_s0.glb",
+            "models/primitive/pasture_s1.glb",
+            "models/primitive/pasture_s2.glb"
+          ]
+        ],
         [
           [
             "quaternius-rts:glTF/Windmill_FirstAge.gltf"
@@ -429,6 +827,13 @@
         "sack"
       ],
       "ages": [
+        [
+          [
+            "models/primitive/camp_s0.glb",
+            "models/primitive/camp_s1.glb",
+            "models/primitive/camp_s2.glb"
+          ]
+        ],
         [
           [
             "quaternius-rts:glTF/Mine.gltf"
@@ -455,6 +860,13 @@
         "fence"
       ],
       "ages": [
+        [
+          [
+            "models/primitive/barracks_s0.glb",
+            "models/primitive/barracks_s1.glb",
+            "models/primitive/barracks_s2.glb"
+          ]
+        ],
         [
           [
             "quaternius-rts:glTF/Barracks_FirstAge_Level1.gltf",
@@ -505,7 +917,8 @@
         "kaykit-hexagon:addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/red/building_archeryrange_red.gltf",
         "kaykit-hexagon:addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/yellow/building_archeryrange_yellow.gltf",
         "kaykit-hexagon:addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/green/building_archeryrange_green.gltf"
-      ]
+      ],
+      "fromTier": 1
     },
     "tower": {
       "height": 3.2,
@@ -530,7 +943,8 @@
         "kaykit-hexagon:addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/red/building_tower_A_red.gltf",
         "kaykit-hexagon:addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/yellow/building_tower_A_yellow.gltf",
         "kaykit-hexagon:addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/green/building_tower_A_green.gltf"
-      ]
+      ],
+      "fromTier": 1
     },
     "wall": {
       "height": 1.3,
@@ -569,7 +983,8 @@
         "kaykit-hexagon:addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/red/building_market_red.gltf",
         "kaykit-hexagon:addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/yellow/building_market_yellow.gltf",
         "kaykit-hexagon:addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/green/building_market_green.gltf"
-      ]
+      ],
+      "fromTier": 1
     },
     "stable": {
       "height": 1.9,
@@ -593,7 +1008,8 @@
             "quaternius-rts:glTF/Storage_SecondAge_Level3.gltf"
           ]
         ]
-      ]
+      ],
+      "fromTier": 1
     },
     "workshop": {
       "height": 2.4,
@@ -623,7 +1039,8 @@
         "kaykit-hexagon:addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/red/building_blacksmith_red.gltf",
         "kaykit-hexagon:addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/yellow/building_blacksmith_yellow.gltf",
         "kaykit-hexagon:addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/green/building_blacksmith_green.gltf"
-      ]
+      ],
+      "fromTier": 1
     },
     "factory": {
       "props": [
@@ -650,6 +1067,117 @@
         "crate",
         "woodpile"
       ]
+    }
+  },
+  "nature": {
+    "$comment": "Природа, ресурсы и быт: ключ (как в игре) → модель из assets/models/nature (делает tools/blender/nature.py). wind — сила ветра (0 — неподвижно). Цвет — в вершинах модели",
+    "pineT": {
+      "file": "models/nature/pineT.glb"
+    },
+    "pineL": {
+      "file": "models/nature/pineL.glb",
+      "wind": 0.02
+    },
+    "oakT": {
+      "file": "models/nature/oakT.glb"
+    },
+    "oakL": {
+      "file": "models/nature/oakL.glb",
+      "wind": 0.03
+    },
+    "oakY": {
+      "file": "models/nature/oakY.glb",
+      "wind": 0.03
+    },
+    "oakO": {
+      "file": "models/nature/oakO.glb",
+      "wind": 0.03
+    },
+    "birchT": {
+      "file": "models/nature/birchT.glb"
+    },
+    "birchL": {
+      "file": "models/nature/birchL.glb",
+      "wind": 0.035
+    },
+    "bush": {
+      "file": "models/nature/bush.glb",
+      "wind": 0.1
+    },
+    "berry": {
+      "file": "models/nature/berry.glb",
+      "wind": 0.1
+    },
+    "rock0": {
+      "file": "models/nature/rock0.glb"
+    },
+    "rock1": {
+      "file": "models/nature/rock1.glb"
+    },
+    "rock2": {
+      "file": "models/nature/rock2.glb"
+    },
+    "ore0": {
+      "file": "models/nature/ore0.glb"
+    },
+    "ore1": {
+      "file": "models/nature/ore1.glb"
+    },
+    "ore2": {
+      "file": "models/nature/ore2.glb"
+    },
+    "gold0": {
+      "file": "models/nature/gold0.glb"
+    },
+    "gold1": {
+      "file": "models/nature/gold1.glb"
+    },
+    "gold2": {
+      "file": "models/nature/gold2.glb"
+    },
+    "wheat": {
+      "file": "models/nature/wheat.glb",
+      "wind": 0.25
+    },
+    "soil": {
+      "file": "models/nature/soil.glb"
+    },
+    "stump": {
+      "file": "models/nature/stump.glb"
+    },
+    "log": {
+      "file": "models/nature/log.glb"
+    },
+    "fern": {
+      "file": "models/nature/fern.glb",
+      "wind": 0.25
+    },
+    "mushroom": {
+      "file": "models/nature/mushroom.glb"
+    },
+    "pebbles": {
+      "file": "models/nature/pebbles.glb"
+    },
+    "crate": {
+      "file": "models/nature/crate.glb"
+    },
+    "barrel": {
+      "file": "models/nature/barrel.glb"
+    },
+    "sack": {
+      "file": "models/nature/sack.glb"
+    },
+    "cart": {
+      "file": "models/nature/cart.glb"
+    },
+    "fence": {
+      "file": "models/nature/fence.glb"
+    },
+    "woodpile": {
+      "file": "models/nature/woodpile.glb"
+    },
+    "hay": {
+      "file": "models/nature/hay.glb"
     }
   }
 }

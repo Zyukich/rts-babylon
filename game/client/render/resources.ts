@@ -9,7 +9,19 @@ export function useResources(ctx: GameContext) {
   const { w } = ctx.session, { heightAt } = ctx.terrain, { NL } = ctx.models, fog = ctx.fog, dirtW = ctx.ground.dirtW;
   const layers = Object.entries(NL).filter(([k]) => !k.startsWith('grass')).map(([, l]) => l);
 
+  // Перестраиваем тысячи инстансов, только если что-то изменилось: разведка, выработка, постройки, рост поселений
+  let lastKey = '';
+  const key = () => {
+    let seen = 0, amt = 0, b = 0;
+    for (let i = 0; i < w.W * w.H; i++) { seen += fog.seen[i]; if (fog.seen[i]) amt = (amt + w.resAmt[i] * ((i & 7) + 1) + w.resType[i]) | 0; }
+    for (const e of w.ents.values()) if (e.kind === 'b') b = (b + e.id * (e.progress >= BUILDINGS[e.type].time ? 3 : 1) + (fog.visible(e) ? 7 : 0)) | 0;
+    return `${seen}|${amt}|${b}|${w.players.map((P) => P.settle).join('')}`;
+  };
+
   function draw() {
+    const k = key();
+    if (k === lastKey) return;
+    lastKey = k;
     layers.forEach((l) => l.begin());
     for (let i = 0; i < w.W * w.H; i++) {
       if (!fog.seen[i]) continue;

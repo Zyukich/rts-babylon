@@ -1,7 +1,11 @@
 // Авторитетный lockstep-сервер.
 // Собирает команды игроков, раз в тик рассылает всем пакет «тик N: команды» и сам крутит ту же симуляцию.
 // Клиент не может «нарисовать» себе золото: всё решает step() на сервере; клиенты лишь повторяют её.
+import { createServer } from 'node:http';
+import { resolve } from 'node:path';
+import { existsSync } from 'node:fs';
 import { WebSocketServer, type WebSocket } from 'ws';
+import { staticHandler } from './static.ts';
 import { createWorld, hash, type World } from '../core/world.ts';
 import { step, type Command } from '../core/sim/index.ts';
 import { Bot, LEVELS, type Level } from '../ai/bot.ts';
@@ -12,10 +16,11 @@ interface Client { ws: WebSocket; name: string; slot: number; budget: number; }
 interface Room {
   id: string; clients: Client[]; started: boolean; bots: Bot[]; inbox: Command[]; level: Level;
   hashes: Map<number, string>; w?: World; timer?: ReturnType<typeof setInterval>;
+  ready: Set<number>; wait?: ReturnType<typeof setTimeout>; // кто загрузился; время не идёт, пока не загрузились все
 }
 
 const PORT = Number(process.env.PORT ?? 8080), MAX_PLAYERS = 8, HASH_EVERY = 50, CMD_BUDGET = 30;
-const MAX_MSG = 64 * 1024, PING_MS = 15000; // команды крошечные: большее — мусор или атака
+const MAX_MSG = 64 * 1024, PING_MS = 15000, LOAD_WAIT_MS = 180000; // команды крошечные: большее — мусор или атака
 const rooms = new Map<string, Room>();
 const out = (ws: WebSocket, m: object) => { if (ws.readyState === 1) ws.send(JSON.stringify(m)); };
 const all = (r: Room, m: object) => { const s = JSON.stringify(m); for (const c of r.clients) if (c.ws.readyState === 1) c.ws.send(s); };
@@ -67,12 +72,22 @@ function start(r: Room, level: Level) {
   for (let p = r.clients.length; p < n; p++) r.bots.push(new Bot(p, level)); // пустые места — боты
   const names = [...r.clients.map((c) => c.name), ...r.bots.map(() => `Бот (${LEVELS[level]})`)];
   r.clients.forEach((c, i) => { c.slot = i; out(c.ws, { type: 'start', seed, n, you: i, names }); });
-  r.timer = setInterval(() => tick(r), TICK_MS);
-  console.log(`[${r.id}] старт: ${names.join(', ')}`);
+  r.ready = new Set();
+  r.wait = setTimeout(() => go(r), LOAD_WAIT_MS); // кто не загрузился за 3 минуты — догонит по пакетам тиков
+  console.log(`[${r.id}] старт: ${names.join(', ')} — ждём загрузки`);
 }
 
+/** Все игроки загрузили карту — запускаем время */
+function go(r: Room) {
+  if (r.timer || !rooms.has(r.id)) return;
+  clearTimeout(r.wait);
+  r.timer = setInterval(() => tick(r), TICK_MS);
+  console.log(`[${r.id}] поехали (загрузились ${r.ready.size}/${r.clients.length})`);
+}
+const allReady = (r: Room) => r.clients.every((c) => c.ws.readyState !== 1 || r.ready.has(c.slot));
+
 function finish(r: Room, why: string) {
-  clearInterval(r.timer);
+  clearInterval(r.timer); clearTimeout(r.wait);
   rooms.delete(r.id);
   console.log(`[${r.id}] конец: ${why}`);
 }
@@ -95,7 +110,15 @@ function tick(r: Room) {
 }
 
 const alive = new WeakMap<WebSocket, boolean>(); // ответил ли на последний пинг
-const wss = new WebSocketServer({ port: PORT, maxPayload: MAX_MSG });
+// Один HTTP-сервер: если есть собранная игра (STATIC_DIR, по умолчанию .output/public) — раздаёт её; WebSocket — на любом пути (в проде /ws)
+const STATIC = resolve(process.env.STATIC_DIR ?? '.output/public');
+const serveStatic = existsSync(STATIC) ? staticHandler(STATIC) : null;
+const http = createServer((req, res) => {
+  if (serveStatic) return serveStatic(req, res);
+  if (req.url === '/health') { res.writeHead(200).end('ok'); return; }
+  res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' }).end('Это игровой сервер ЭПОХ (WebSocket). Игра — на адресе Nuxt.');
+});
+const wss = new WebSocketServer({ server: http, maxPayload: MAX_MSG });
 wss.on('connection', (ws: WebSocket) => {
   let room: Room | null = null, me: Client | null = null;
   alive.set(ws, true);
@@ -109,7 +132,7 @@ wss.on('connection', (ws: WebSocket) => {
       const id = String(m.room ?? '').trim().slice(0, 32);
       if (!id) return out(ws, { type: 'error', msg: 'Пустое имя комнаты' });
       let r = rooms.get(id);
-      if (!r) { r = { id, clients: [], started: false, bots: [], inbox: [], hashes: new Map(), level: 'normal' }; rooms.set(id, r); }
+      if (!r) { r = { id, clients: [], started: false, bots: [], inbox: [], hashes: new Map(), level: 'normal', ready: new Set() }; rooms.set(id, r); }
       if (r.started || r.clients.length >= MAX_PLAYERS) return out(ws, { type: 'error', msg: 'Игра уже идёт или комната заполнена' });
       room = r;
       me = { ws, name: String(m.name ?? 'Игрок').slice(0, 20), slot: r.clients.length, budget: 0 };
@@ -119,6 +142,7 @@ wss.on('connection', (ws: WebSocket) => {
     }
     if (!room || !me) return;
     if (m.type === 'start' && !room.started && me.slot === 0) start(room, Object.hasOwn(LEVELS, m.ai) ? m.ai : 'normal');
+    else if (m.type === 'ready' && room.started && !room.timer) { room.ready.add(me.slot); if (allReady(room)) go(room); }
     else if (m.type === 'cmd' && room.started && me.budget++ < CMD_BUDGET) {
       const c = sanitize(m.cmd, me.slot);
       if (c) room.inbox.push(c);
@@ -136,6 +160,7 @@ wss.on('connection', (ws: WebSocket) => {
     } else if (rooms.get(room.id) === room && !room.bots.some((b) => b.p === me!.slot)) {
       room.bots.push(new Bot(me.slot, room.level)); // ушедшего игрока подхватывает бот — его команды тоже идут в общий тик
       all(room, { type: 'left', name: me.name });
+      if (!room.timer && allReady(room)) go(room); // ушёл, пока все грузились, — остальных не держим
     }
   });
 });
@@ -148,4 +173,9 @@ setInterval(() => {
     ws.ping();
   }
 }, PING_MS);
-console.log(`Сервер ЭПОХИ на ws://localhost:${PORT}`);
+http.listen(PORT, () => console.log(`Сервер ЭПОХИ: ws://localhost:${PORT}${serveStatic ? ` · игра: http://localhost:${PORT} (${STATIC})` : ''}`));
+for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => { // Coolify/Docker останавливают контейнер сигналом — закрываемся аккуратно
+  for (const ws of wss.clients) ws.close(1001, 'Сервер перезапускается');
+  http.close(() => process.exit(0));
+  setTimeout(() => process.exit(0), 3000).unref();
+});

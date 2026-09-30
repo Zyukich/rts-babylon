@@ -46,9 +46,16 @@ export function useEffects(ctx: GameContext) {
       c.t += dt;
       if (c.t > 4) { corpses.splice(i, 1); continue; }
       const s = c.t > 3 ? 4 - c.t : 1;
-      const die = A?.units[c.type]?.die;
-      if (die) die[Math.min(die.length - 1, Math.floor((c.t / (A?.udur[c.type]?.die ?? 1)) * die.length))].add(c.x, heightAt(c.x, c.z), c.z, s * US, s * US, s * US, undefined, c.yaw);
-      else addModel(c.type, c.x, heightAt(c.x, c.z) - 0.02, c.z, c.yaw, s * US, [...pcol(c.owner).map((v) => v * 0.6), 1], 0.2);
+      const au = A?.units[c.type], die = au?.die, y = heightAt(c.x, c.z);
+      if (die) {
+        const f = die[Math.min(die.length - 1, Math.floor((c.t / (A?.udur[c.type]?.die ?? 1)) * die.length))];
+        f.base.add(c.x, y, c.z, s * US, s * US, s * US, undefined, c.yaw);
+        f.team?.add(c.x, y, c.z, s * US, s * US, s * US, [...pcol(c.owner), 1], c.yaw);
+      } else if (au?.idle) { // техника без анимации гибели: обломки оседают в землю
+        const f = au.idle[0], k = Math.max(0.05, 1 - c.t / 4);
+        f.base.add(c.x, y - (1 - k) * 0.3, c.z, US, US * k, US, undefined, c.yaw);
+        f.team?.add(c.x, y - (1 - k) * 0.3, c.z, US, US * k, US, [...pcol(c.owner).map((v) => v * 0.5), 1], c.yaw);
+      } else addModel(c.type, c.x, heightAt(c.x, c.z) - 0.02, c.z, c.yaw, s * US, [...pcol(c.owner).map((v) => v * 0.6), 1], 0.2);
     }
     for (const ti of w.carcass.values()) { // туши коров: лежат, уменьшаются по мере разделки
       if (!w.resType[ti] || w.resKind[ti] !== 1 || !fog.seen[ti]) continue;

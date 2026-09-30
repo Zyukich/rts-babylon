@@ -13,6 +13,8 @@ export type SelectionPanel =
   | { kind: 'buildings'; icon: string; name: string; count: number; busy: number; queue: QueueSlot[] }
   | { kind: 'group'; count: number; types: { a: string; icon: string; title: string; count: number }[] };
 
+/** Событие мира в ленте: засуха, землетрясение, месторождение… left — сколько ещё действует; a — показать место */
+export interface WorldEvent { id: number; icon: string; text: string; ago: string; left?: string; a?: string; mine: boolean; fresh: boolean }
 export interface Alert { text: string; a?: string; kind: 'idle' | 'warn' | 'info' }
 export interface DiploRow { id: number; name: string; color: string; rel: string; waiting?: string; buttons: { a: string; label: string }[]; tribute: { a: string; label: string }[] }
 export interface EndInfo {
@@ -24,7 +26,8 @@ export interface HudState {
   pop: string; res: { icon: string; value: number; key: string }[];
   status: { fps?: number; time: string; regions: string; culture: string };
   age: { name: string; sub: string };
-  hover: string; news: string; message: string;
+  hover: string; news: string; message: string; notice: string;
+  events: WorldEvent[];
   alerts: Alert[];
   diplomacy: DiploRow[] | null;   // null — панель закрыта
   selection: SelectionPanel;

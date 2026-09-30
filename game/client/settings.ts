@@ -3,7 +3,7 @@ export interface Settings {
   preset: 'low' | 'medium' | 'high' | 'ultra' | 'custom';
   renderScale: number; msaa: boolean; fxaa: boolean; shadows: number; ssao: boolean; bloom: boolean; vignette: boolean;
   saturation: number; grass: number; grassDist: number; wind: boolean; fpsLimit: number; showFps: boolean;
-  master: number; sfx: number; music: number;
+  master: number; sfx: number; music: number; autoQuality: boolean;
   camSpeed: number; edgeScroll: boolean; hpBars: 'damaged' | 'always' | 'selected'; uiScale: number; hints: boolean;
   name: string; server: string;
 }
@@ -16,7 +16,7 @@ export const PRESETS: Record<string, Partial<Settings>> = {
 export const DEFAULTS: Settings = {
   preset: 'high', renderScale: 1, msaa: true, fxaa: true, shadows: 2048, ssao: true, bloom: true, vignette: true,
   saturation: 10, grass: 0, grassDist: 100, wind: true, fpsLimit: 0, showFps: false,
-  master: 80, sfx: 80, music: 60,
+  master: 80, sfx: 80, music: 60, autoQuality: true,
   camSpeed: 1, edgeScroll: true, hpBars: 'damaged', uiScale: 1, hints: true,
   name: 'Игрок', server: '',
 };
@@ -29,15 +29,16 @@ type Opt = [string | number, string];
 export interface Field { tab: string; k: keyof Settings; label: string; kind: 'sel' | 'range' | 'check' | 'text'; opts?: Opt[]; min?: number; max?: number; step?: number; unit?: string; hint?: string }
 export const FIELDS: Field[] = [
   { tab: 'Графика', k: 'preset', label: 'Качество (пресет)', kind: 'sel', opts: [['low', 'Низкое'], ['medium', 'Среднее'], ['high', 'Высокое'], ['ultra', 'Ультра'], ['custom', 'Своё']] },
+  { tab: 'Графика', k: 'autoQuality', label: 'Автонастройка качества', kind: 'check', hint: 'Если FPS проседает, игра сама отключает самое тяжёлое' },
   { tab: 'Графика', k: 'renderScale', label: 'Разрешение рендера', kind: 'range', min: 0.5, max: 1.5, step: 0.05, unit: '×', hint: 'Меньше 1 — быстрее, больше 1 — чётче' },
-  { tab: 'Графика', k: 'msaa', label: 'Сглаживание MSAA', kind: 'check', hint: 'Применится при следующем запуске партии' },
+  { tab: 'Графика', k: 'msaa', label: 'Сглаживание MSAA', kind: 'check', hint: 'Применится со следующей партии' },
   { tab: 'Графика', k: 'fxaa', label: 'Сглаживание FXAA', kind: 'check' },
   { tab: 'Графика', k: 'shadows', label: 'Тени', kind: 'sel', opts: [[0, 'Выключены'], [1024, 'Низкие'], [2048, 'Средние'], [4096, 'Высокие']] },
   { tab: 'Графика', k: 'ssao', label: 'Мягкое затенение (SSAO)', kind: 'check', hint: 'Объём в углах и у земли. Самое «тяжёлое»' },
   { tab: 'Графика', k: 'bloom', label: 'Свечение (bloom)', kind: 'check' },
   { tab: 'Графика', k: 'vignette', label: 'Затемнение краёв', kind: 'check' },
   { tab: 'Графика', k: 'saturation', label: 'Насыщенность цвета', kind: 'range', min: 0, max: 70, step: 1 },
-  { tab: 'Графика', k: 'grass', label: 'Густота травы', kind: 'range', min: 0, max: 150, step: 5, unit: '%', hint: '0 — без травы' },
+  { tab: 'Графика', k: 'grass', label: 'Густота травы', kind: 'range', min: 0, max: 150, step: 5, unit: '%', hint: '0 — без травы. Густота — со следующей партии' },
   { tab: 'Графика', k: 'grassDist', label: 'Дальность травы', kind: 'range', min: 40, max: 150, step: 5, unit: '%' },
   { tab: 'Графика', k: 'wind', label: 'Ветер (трава и деревья колышутся)', kind: 'check' },
   { tab: 'Графика', k: 'fpsLimit', label: 'Ограничение FPS', kind: 'sel', opts: [[0, 'Без ограничения'], [30, '30'], [60, '60'], [120, '120']] },
@@ -51,7 +52,7 @@ export const FIELDS: Field[] = [
   { tab: 'Игра', k: 'uiScale', label: 'Масштаб интерфейса', kind: 'range', min: 0.75, max: 1.5, step: 0.05, unit: '×' },
   { tab: 'Игра', k: 'hints', label: 'Подсказки по управлению', kind: 'check' },
   { tab: 'Сеть', k: 'name', label: 'Имя в сетевой игре', kind: 'text' },
-  { tab: 'Сеть', k: 'server', label: 'Адрес сервера', kind: 'text', hint: 'Пусто — тот же компьютер (ws://…:8080)' },
+  { tab: 'Сеть', k: 'server', label: 'Адрес сервера', kind: 'text', hint: 'Пусто — сервер сайта (при разработке — ws://…:8080)' },
 ];
 export const KEYS: [string, string][] = [
   ['ЛКМ / рамка', 'Выбрать / выбрать группу'], ['Двойной клик', 'Все такие же на экране'], ['ПКМ', 'Приказ (для зданий — точка сбора)'], ['Shift+ПКМ', 'Приказ в очередь'],

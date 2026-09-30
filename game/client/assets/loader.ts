@@ -3,27 +3,39 @@
 // Так сотни анимированных юнитов стоят почти как статичные. Нет манифеста или файла — остаются процедурные модели.
 import '@babylonjs/loaders/glTF';
 import { ANIM_FRAMES, UNIT_HEIGHT } from '../config/visual.ts';
-import { SceneLoader, Mesh, VertexData, Vector3, Texture, MultiMaterial, type Scene, type AbstractMesh, type AnimationGroup, type AssetContainer, type Material } from '@babylonjs/core';
+import { SceneLoader, Mesh, TransformNode, VertexData, Vector3, Texture, Color3, MultiMaterial, type Scene, type AbstractMesh, type AnimationGroup, type AssetContainer, type Material } from '@babylonjs/core';
 
 export interface LayerLike { mesh: Mesh; begin(): void; add(x: number, y: number, z: number, sx: number, sy: number, sz: number, col?: number[], yaw?: number): void; end(): void; }
 export type AnimKey = 'idle' | 'walk' | 'attack' | 'shoot' | 'work' | 'die';
+/** Кадр запечённой анимации: основа + части в цвет игрока (плащ и т.п.) */
+export interface UnitFrame { base: LayerLike; team: LayerLike | null }
 export interface Assets {
-  units: Record<string, Partial<Record<AnimKey, LayerLike[]>>>; // тип → анимация → кадры
+  units: Record<string, Partial<Record<AnimKey, UnitFrame[]>>>; // тип → анимация → кадры
   udur: Record<string, Partial<Record<AnimKey, number>>>;      // длительность клипа, с
   buildings: Record<string, LayerLike[]>;                       // тип → варианты по цветам игроков
   staged: Record<string, LayerLike[][][]>;                      // тип → [эпоха][вариант][стадия стройки]
   textures: Record<string, Texture>;
   layers: LayerLike[];
+  /** Природа и быт: ключ (pineT, oakL, rock0, crate…) → меш в масштабе файла; wind — сила ветра */
+  nature: Record<string, { mesh: Mesh; wind: number }>;
 }
 interface AnimRef { file: string; name: string; }
 /** public/assets/manifest.json — собирает scripts/assets/build.mjs */
 export interface Manifest {
   version: number;
-  units?: Record<string, { file: string; anims: Partial<Record<AnimKey, AnimRef>> }>;
-  buildings?: Record<string, { ages?: string[][][]; colors?: string[] }>;
+  units?: Record<string, UnitSpec>;
+  buildings?: Record<string, { ages?: string[][][]; fromTier?: number; colors?: string[] }>;
   textures?: Record<string, string>;
   sounds?: Record<string, { file: string; volume?: number }>;
+  nature?: Record<string, { file: string; wind?: number }>;
 }
+
+/** Юнит в манифесте. parts — какие части модели оставить (шаблоны имён, * — любые символы), team — какие из них в цвет игрока.
+ *  Без anims — статичная модель (техника). length — длина по земле в клетках (для техники), иначе рост = unitHeight × scale. rotate — поворот, градусы */
+export interface UnitSpec { file: string; anims: Partial<Record<AnimKey, AnimRef>>; parts?: string[]; team?: string[]; scale?: number; length?: number; rotate?: number; rider?: RiderSpec }
+/** Всадник: персонаж в позе anim, едет вместе с костью bone модели (коня).
+ *  offset — сдвиг от кости в долях длины коня [вправо, вверх, вперёд]; scale — рост всадника в долях длины коня; rotate — довернуть, градусы */
+export interface RiderSpec { file: string; anim?: string; bone: string; parts?: string[]; team?: string[]; offset?: [number, number, number]; rotate?: number; scale?: number }
 
 export const ASSETS_ROOT = '/assets/';
 export async function fetchManifest(): Promise<Manifest | null> {
@@ -52,8 +64,9 @@ function solid(mat: Material | null) {
   if ('twoSidedLighting' in m) m.twoSidedLighting = false; // нормали в снимке уже наружу; иначе у doubleSided-моделей (Quaternius) после разворота граней свет «со спины» — они чёрные
 }
 // Снимок мешей в текущей позе → один статичный меш в мировых координатах (скелет и иерархия «впекаются»)
-function snapshot(scene: Scene, meshes: AbstractMesh[], skinned: boolean): Mesh | null {
+function snapshot(scene: Scene, meshes: AbstractMesh[], skinned: boolean, multi = true): Mesh | null {
   const parts: Mesh[] = [], v = new Vector3();
+  const colored = meshes.some((m) => m.isVerticesDataPresent('color')); // цвет вершин (светотень из Blender) — у всех частей, иначе не слить
   for (const m of meshes) {
     const pos = m.getPositionData(skinned, false), src = VertexData.ExtractFromMesh(m as Mesh);
     if (!pos || !src.indices) continue;
@@ -66,6 +79,11 @@ function snapshot(scene: Scene, meshes: AbstractMesh[], skinned: boolean): Mesh 
     if (wm.determinant() < 0) for (let i = 0; i < idx.length; i += 3) { const t = idx[i + 1]; idx[i + 1] = idx[i + 2]; idx[i + 2] = t; } // зеркало glTF → разворот граней
     const vd = new VertexData(), nrm: number[] = [];
     vd.positions = out; vd.indices = idx; vd.uvs = src.uvs ?? new Float32Array((pos.length / 3) * 2);
+    if (colored) {
+      const n = pos.length / 3, c = src.colors, k = c ? c.length / n : 4;
+      if (c && k === 4) vd.colors = c;
+      else { const cc = new Float32Array(n * 4).fill(1); if (c) for (let i = 0; i < n; i++) { cc[i * 4] = c[i * k]; cc[i * 4 + 1] = c[i * k + 1]; cc[i * 4 + 2] = c[i * k + 2]; } vd.colors = cc; }
+    }
     const fileN = m.getNormalsData(skinned, false); // родные нормали из файла (для юнитов — уже в позе скелета)
     if (fileN && fileN.length === pos.length) for (let i = 0; i < fileN.length; i += 3) {
       Vector3.TransformNormalFromFloatsToRef(fileN[i], fileN[i + 1], fileN[i + 2], wm, v);
@@ -84,7 +102,21 @@ function snapshot(scene: Scene, meshes: AbstractMesh[], skinned: boolean): Mesh 
     p.material = m.material;
     parts.push(p);
   }
-  return parts.length ? Mesh.MergeMeshes(parts, true, true, undefined, false, true) : null;
+  return parts.length ? Mesh.MergeMeshes(parts, true, true, undefined, false, multi) : null; // multi=false — один подмеш (природа: свой материал на всё)
+}
+/** Обход вершин каждого треугольника — по его нормали: у материала природы задние грани отсекаются,
+ *  а после зеркала glTF часть граней оказывалась «изнанкой» к камере — камни и ящики выглядели чёрными */
+function faceOut(m: Mesh) {
+  const p = m.getVerticesData('position'), n = m.getVerticesData('normal'), ix = m.getIndices();
+  if (!p || !n || !ix) return;
+  const out = Array.from(ix);
+  for (let t = 0; t < out.length; t += 3) {
+    const a = out[t] * 3, b = out[t + 1] * 3, c = out[t + 2] * 3;
+    const ux = p[b] - p[a], uy = p[b + 1] - p[a + 1], uz = p[b + 2] - p[a + 2], vx = p[c] - p[a], vy = p[c + 1] - p[a + 1], vz = p[c + 2] - p[a + 2];
+    const gx = uy * vz - uz * vy, gy = uz * vx - ux * vz, gz = ux * vy - uy * vx;
+    if (gx * (n[a] + n[b] + n[c]) + gy * (n[a + 1] + n[b + 1] + n[c + 1]) + gz * (n[a + 2] + n[b + 2] + n[c + 2]) > 0) { const k = out[t + 1]; out[t + 1] = out[t + 2]; out[t + 2] = k; }
+  }
+  m.setIndices(out);
 }
 function normalize(m: Mesh, s: number, ox: number, oy: number, oz: number) {
   m.scaling.setAll(s);
@@ -127,7 +159,31 @@ async function loadStatic(scene: Scene, file: string, footprint: number, fit: Fi
   return m;
 }
 
-async function loadUnit(scene: Scene, spec: { file: string; anims: Partial<Record<AnimKey, AnimRef>> }, libs: Map<string, AssetContainer>) {
+const glob = (pats: string[]) => { // имя меша из glTF: «Knight_Body» или «Knight_Body_primitive0»
+  const re = pats.map((p) => new RegExp(`^${p.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}(_primitive\\d+)?$`));
+  return (name: string) => re.some((r) => r.test(name));
+};
+// Материал для частей «в цвет игрока»: без текстуры, белый — цвет даёт инстанс
+const teamMats = new Map<Material, Material>();
+function teamMaterial(mat: Material | null): Material | null {
+  if (!mat) return null;
+  if (mat instanceof MultiMaterial) {
+    const mm = mat.clone(mat.name + '_team', false);
+    mm.subMaterials = mat.subMaterials.map((m) => teamMaterial(m));
+    return mm;
+  }
+  if (!teamMats.has(mat)) {
+    const cl = mat.clone(mat.name + '_team')! as unknown as Record<string, unknown>;
+    for (const k of ['albedoTexture', 'diffuseTexture']) if (k in cl) cl[k] = null;
+    if ('albedoColor' in cl) cl.albedoColor = Color3.White();
+    if ('diffuseColor' in cl) cl.diffuseColor = Color3.White();
+    teamMats.set(mat, cl as unknown as Material);
+  }
+  return teamMats.get(mat)!;
+}
+
+type Baked = { base: Mesh; team: Mesh | null };
+async function loadUnit(scene: Scene, spec: UnitSpec, libs: Map<string, AssetContainer>) {
   const c = await load(spec.file, scene);
   c.addAllToScene();
   for (const g of c.animationGroups) g.stop();
@@ -141,14 +197,85 @@ async function loadUnit(scene: Scene, spec: { file: string; anims: Partial<Recor
     const src = lib.animationGroups.find((g) => g.name === a.name);
     return src ? src.clone(`${a.name}_${spec.file}`, (t) => byName.get(t.name) ?? t) : null; // переносим анимацию на кости персонажа по именам
   };
-  const meshes = c.meshes.filter((m) => m.getTotalVertices() > 0 && m.isEnabled() && m.isVisible);
-  const out: Partial<Record<AnimKey, Mesh[]>> = {}, durs: Partial<Record<AnimKey, number>> = {};
+  // Какие части брать и какие красить: по имени меша или по имени материала (у Quaternius цвет формы — материал)
+  const pick = (all: AbstractMesh[], parts?: string[], team?: string[]) => {
+    const keep = parts?.length ? glob(parts) : null, isTeam = team?.length ? glob(team) : () => false;
+    const ms = all.filter((m) => m.getTotalVertices() > 0 && (keep ? keep(m.name) : m.isEnabled() && m.isVisible));
+    const tm = (m: AbstractMesh) => isTeam(m.name) || (!!m.material && isTeam(m.material.name));
+    return { base: ms.filter((m) => !tm(m)), team: ms.filter(tm) };
+  };
+  const own = pick(c.meshes, spec.parts, spec.team);
+  const baseMs = [...own.base], teamMs = [...own.team];
+  const skinned = c.skeletons.length > 0;
+  // Всадник: грузим персонажа и сажаем на кость коня
+  let rider: { c: AssetContainer; mount: TransformNode; anim: AnimationGroup | null; bone: TransformNode | null; k: number; unit: number } | null = null;
+  const size = (ms: AbstractMesh[]) => { // габариты в текущей позе (через временный снимок)
+    const m = snapshot(scene, ms, skinned);
+    if (!m) return null;
+    const b = m.getBoundingInfo().boundingBox, r = { w: Math.max(b.maximum.x - b.minimum.x, b.maximum.z - b.minimum.z), h: b.maximum.y - b.minimum.y, y0: b.minimum.y };
+    m.dispose(false, false);
+    return r;
+  };
+  if (spec.rider) {
+    const r = spec.rider, rc = await load(r.file, scene);
+    rc.addAllToScene();
+    for (const g of rc.animationGroups) g.stop();
+    const mount = new TransformNode('mount', scene);
+    mount.rotation.y = ((r.rotate ?? 0) * Math.PI) / 180;
+    for (const m of rc.meshes) if (!m.parent) m.parent = mount; // корень персонажа (__root__) — на седло
+    const rp = pick(rc.meshes, r.parts, r.team);
+    rider = { c: rc, mount, anim: rc.animationGroups.find((g) => g.name === r.anim) ?? null, bone: c.transformNodes.find((n) => n.name === r.bone) ?? null, k: 1, unit: 1 };
+    // калибровка: длина коня и рост всадника в «сырых» единицах файлов
+    for (const n of c.transformNodes) n.computeWorldMatrix(true);
+    for (const sk of c.skeletons) sk.prepare(true);
+    const horse = size(baseMs), g = rider.anim;
+    if (g) { g.start(false, 1, g.from, g.to); g.goToFrame(g.from); g.pause(); }
+    mount.computeWorldMatrix(true);
+    for (const n of rc.transformNodes) n.computeWorldMatrix(true);
+    for (const sk of rc.skeletons) sk.prepare(true);
+    const man = size([...rp.base, ...rp.team]);
+    if (horse && man) { rider.unit = horse.w; rider.k = ((r.scale ?? 0.6) * horse.w) / (man.h || 1); }
+    mount.scaling.setAll(rider.k);
+    baseMs.push(...rp.base); teamMs.push(...rp.team);
+  }
+  const poseRider = (k: number) => { // поза всадника (его анимация по кругу в такт кадрам коня) и место на кости
+    if (!rider) return;
+    const g = rider.anim, r = spec.rider!, o = r.offset ?? [0, 0, 0];
+    if (g) { g.start(false, 1, g.from, g.to); g.goToFrame(g.from + (g.to - g.from) * k); g.pause(); }
+    const at = rider.bone ? rider.bone.getAbsolutePosition() : Vector3.Zero();
+    rider.mount.position.set(at.x + o[0] * rider.unit, at.y + o[1] * rider.unit, at.z + o[2] * rider.unit);
+    rider.mount.computeWorldMatrix(true);
+    for (const n of rider.c.transformNodes) n.computeWorldMatrix(true);
+    for (const sk of rider.c.skeletons) sk.prepare(true);
+  };
+  const out: Partial<Record<AnimKey, Baked[]>> = {}, durs: Partial<Record<AnimKey, number>> = {};
   let norm: number[] | null = null;
+  const rot = ((spec.rotate ?? 0) * Math.PI) / 180;
+  const bake = (): Baked | null => {
+    const base = snapshot(scene, baseMs, skinned), team = teamMs.length ? snapshot(scene, teamMs, skinned) : null;
+    if (!base) return null;
+    if (team) team.material = teamMaterial(team.material);
+    for (const m of [base, team]) if (m && rot) { m.rotation.y = rot; m.bakeCurrentTransformIntoVertices(); m.refreshBoundingInfo(); }
+    if (!norm) { // масштаб и центр — по первой позе: ноги (колёса) на земле
+      const b = base.getBoundingInfo().boundingBox;
+      const k = spec.length ? spec.length / (Math.max(b.maximum.x - b.minimum.x, b.maximum.z - b.minimum.z) || 1) : (UNIT_HEIGHT * (spec.scale ?? 1)) / ((b.maximum.y - b.minimum.y) || 1);
+      norm = [k, (b.minimum.x + b.maximum.x) / 2, b.minimum.y, (b.minimum.z + b.maximum.z) / 2];
+    }
+    for (const m of [base, team]) if (m) normalize(m, norm[0], norm[1], norm[2], norm[3]);
+    return { base, team };
+  };
+  const keys = Object.keys(spec.anims) as AnimKey[];
+  if (!keys.length) { // статичная модель: одна поза на все случаи
+    for (const n of c.transformNodes) n.computeWorldMatrix(true);
+    poseRider(0);
+    const f = bake();
+    if (f) { out.idle = [f]; durs.idle = 1; }
+  }
   for (const key of ['idle', 'walk', 'attack', 'shoot', 'work', 'die'] as AnimKey[]) {
     const g = await groupFor(spec.anims[key]);
     if (!g) continue;
     for (const o of c.animationGroups) o.stop();
-    const F = ANIM_FRAMES[key] ?? 16, list: Mesh[] = [];
+    const F = ANIM_FRAMES[key] ?? 16, list: Baked[] = [];
     for (let k = 0; k < F; k++) {
       const t = g.from + ((g.to - g.from) * k) / (key === 'die' ? F - 1 : F);
       g.start(false, 1, g.from, g.to);
@@ -156,24 +283,20 @@ async function loadUnit(scene: Scene, spec: { file: string; anims: Partial<Recor
       g.pause();
       for (const n of c.transformNodes) n.computeWorldMatrix(true);
       for (const s of c.skeletons) s.prepare(true);
-      const m = snapshot(scene, meshes, true);
-      if (!m) continue;
-      if (!norm) { // масштаб и центр — по первой позе: рост ≈ 0.95 клетки, ноги на земле
-        const b = m.getBoundingInfo().boundingBox;
-        norm = [UNIT_HEIGHT / ((b.maximum.y - b.minimum.y) || 1), (b.minimum.x + b.maximum.x) / 2, b.minimum.y, (b.minimum.z + b.maximum.z) / 2];
-      }
-      normalize(m, norm[0], norm[1], norm[2], norm[3]);
-      list.push(m);
+      poseRider(k / F);
+      const f = bake();
+      if (f) list.push(f);
     }
     g.stop();
     if (list.length) { out[key] = list; durs[key] = Math.max(0.25, (g.to - g.from) / 60); }
   }
+  if (rider) { cleanup(rider.c); rider.mount.dispose(); }
   cleanup(c);
   return Object.keys(out).length ? { out, durs } : null;
 }
 
-export async function loadAssets(scene: Scene, man: Manifest, make: (m: Mesh) => LayerLike, sizes: Record<string, { size: number }>, progress?: (text: string) => void): Promise<Assets> {
-  const A: Assets = { units: {}, udur: {}, buildings: {}, staged: {}, textures: {}, layers: [] };
+export async function loadAssets(scene: Scene, man: Manifest, make: (m: Mesh, perColor?: boolean) => LayerLike, sizes: Record<string, { size: number }>, progress?: (text: string, frac: number) => void): Promise<Assets> {
+  const A: Assets = { units: {}, udur: {}, buildings: {}, staged: {}, textures: {}, layers: [], nature: {} };
   const cache = new Map<string, LayerLike>(), libs = new Map<string, AssetContainer>();
   const staticLayer = async (file: string, footprint: number) => {
     const key = `${file}@${footprint}`;
@@ -184,9 +307,12 @@ export async function loadAssets(scene: Scene, man: Manifest, make: (m: Mesh) =>
     }
     return cache.get(key)!;
   };
-  const types = Object.entries(man.buildings ?? {}).filter(([t]) => sizes[t]);
+  const types = Object.entries(man.buildings ?? {}).filter(([t]) => sizes[t]), total = types.length + Object.keys(man.units ?? {}).length + Math.ceil(Object.keys(man.nature ?? {}).length / 8) || 1;
+  let n = 0;
+  const tick = (text: string) => progress?.(text, n++ / total);
   for (const [i, [type, spec]] of types.entries()) {
-    progress?.(`Здания ${i + 1}/${types.length}`);
+    tick(`Здания ${i + 1}/${types.length}`);
+    await new Promise((r) => setTimeout(r, 0)); // дать браузеру перерисовать экран загрузки
     const fp = sizes[type].size * 0.95;
     if (spec.ages?.length) { // по эпохам со стадиями стройки
       const out: LayerLike[][][] = [];
@@ -203,7 +329,7 @@ export async function loadAssets(scene: Scene, man: Manifest, make: (m: Mesh) =>
         }
         if (vs.length) out.push(vs);
       }
-      if (out.length) A.staged[type] = out;
+      if (out.length) { for (let i = 0; i < (spec.fromTier ?? 0); i++) out.unshift(out[0]); A.staged[type] = out; } // fromTier: ранние ступени — тот же вид, без повторной загрузки
     }
     if (spec.colors?.length && !A.staged[type]) { // по цветам игроков
       const ls: LayerLike[] = [];
@@ -213,18 +339,35 @@ export async function loadAssets(scene: Scene, man: Manifest, make: (m: Mesh) =>
   }
   const units = Object.entries(man.units ?? {});
   for (const [i, [type, spec]] of units.entries()) {
-    progress?.(`Юниты ${i + 1}/${units.length}`);
+    tick(`Юниты ${i + 1}/${units.length}`);
+    await new Promise((r) => setTimeout(r, 0));
     const got = await loadUnit(scene, spec, libs).catch((e) => { console.warn('Юнит не загрузился:', type, e); return null; });
     if (!got) continue;
     A.udur[type] = got.durs;
     A.units[type] = {};
     for (const [k, list] of Object.entries(got.out)) {
-      const ls = list!.map((m) => make(m));
-      A.units[type][k as AnimKey] = ls;
-      A.layers.push(...ls);
+      const fr = list!.map((f) => ({ base: make(f.base), team: f.team ? make(f.team, true) : null }));
+      A.units[type][k as AnimKey] = fr;
+      for (const f of fr) A.layers.push(f.base, ...(f.team ? [f.team] : []));
     }
   }
   A.layers.push(...new Set(cache.values()));
+  const nat = Object.entries(man.nature ?? {});
+  for (const [i, [key, spec]] of nat.entries()) { // природа — в масштабе файла, без подгонки под клетку
+    if (i % 8 === 0) { tick(`Природа ${i + 1}/${nat.length}`); await new Promise((r) => setTimeout(r, 0)); }
+    try {
+      const c = await load(spec.file, scene);
+      c.addAllToScene();
+      const m = snapshot(scene, c.meshes.filter((x) => x.getTotalVertices() > 0), false, false);
+      cleanup(c);
+      if (m) {
+        const col = m.getVerticesData('color'); // glTF хранит цвет вершин линейным, а материал природы (Standard) ждёт sRGB
+        if (col) { for (let j = 0; j < col.length; j++) if (j % 4 !== 3) col[j] = Math.pow(col[j], 1 / 2.2); m.setVerticesData('color', col); }
+        faceOut(m);
+        m.name = key; m.isPickable = false; A.nature[key] = { mesh: m, wind: spec.wind ?? 0 };
+      }
+    } catch (e) { console.warn('Природа не загрузилась:', key, e); }
+  }
   for (const [k, p] of Object.entries(man.textures ?? {})) A.textures[k] = new Texture(ROOT + p, scene);
   for (const lib of libs.values()) lib.dispose();
   return A;

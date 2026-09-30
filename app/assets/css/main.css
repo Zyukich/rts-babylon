@@ -1,21 +1,31 @@
-/* Общая тема: цвета, шрифт, кнопки и панели меню. Стили отдельных элементов HUD — в их компонентах (app/components/hud). */
-:root { --gold: #c9a35a; --gold2: #7a5c2e; --gold3: #f3d08a; --panel: #1b1712; --panel2: #2a231a; --text: #eadfc8; --muted: #b9a887; }
-html, body { margin: 0; height: 100%; overflow: hidden; background: #111; font: 14px 'Segoe UI', system-ui, sans-serif; color: var(--text); user-select: none; }
+/* Общая тема: цвета, шрифт, кнопки и панели. Стили отдельных элементов HUD — в их компонентах (app/components/hud).
+   --u — «пиксель интерфейса»: растёт с экраном (1 при 1600×900, 1.2 при 1920×1080, 1.6 при 2560×1440), × масштаб из настроек.
+   Все размеры HUD задаются как calc(var(--u) * N). */
+:root {
+  --gold: #c9a35a; --gold2: #7a5c2e; --gold3: #f3d08a; --panel: #1b1712; --panel2: #2a231a; --text: #eadfc8; --muted: #b9a887;
+  --ui-scale: 1;
+  --u: calc(clamp(0.8px, min(0.0625vw, 0.1111vh), 1.9px) * var(--ui-scale));
+  --font: 'Segoe UI', system-ui, -apple-system, 'Roboto', 'Ubuntu', 'Helvetica Neue', Arial, 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+}
+html, body { margin: 0; height: 100%; overflow: hidden; background: #111; font: calc(var(--u) * 15) / 1.35 var(--font); color: var(--text); user-select: none; -webkit-font-smoothing: antialiased; }
 #__nuxt { height: 100%; }
 canvas.fill { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; outline: none; }
+button { font-family: inherit; }
 
 /* ---- кнопки и панели ---- */
-.mbtn { padding: 12px 18px; font-size: 17px; text-align: left; color: #f3e6c8; background: linear-gradient(#3a2f20e6, #1b1712e6); border: 2px solid var(--gold2); border-radius: 6px; cursor: pointer; font-family: inherit; text-decoration: none; }
-.mbtn:hover:not([disabled]), .mbtn.router-link-active { border-color: var(--gold); box-shadow: 0 0 12px #f3d08a55; }
+.mbtn { display: inline-flex; align-items: center; gap: calc(var(--u) * 8); padding: calc(var(--u) * 12) calc(var(--u) * 18); font-size: calc(var(--u) * 17); text-align: left; color: #f3e6c8; background: linear-gradient(#3a2f20e6, #1b1712e6); border: calc(var(--u) * 2) solid var(--gold2); border-radius: calc(var(--u) * 6); cursor: pointer; font-family: inherit; text-decoration: none; box-sizing: border-box; }
+.mbtn:hover:not([disabled]), .mbtn.router-link-active { border-color: var(--gold); box-shadow: 0 0 calc(var(--u) * 12) #f3d08a55; }
 .mbtn[disabled] { opacity: .45; cursor: default; }
-.mbtn.sm { padding: 4px 12px; font-size: 13px; }
-.mpanel { margin: 40px auto; width: min(960px, 92vw); max-height: 86vh; overflow: auto; padding: 22px 28px; background: #15110cf2; border: 2px solid var(--gold); border-radius: 10px; box-shadow: 0 10px 40px #000a; box-sizing: border-box; }
-.mpanel h2 { margin: 0 0 14px; color: var(--gold3); }
-.mrow { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 7px 0; border-bottom: 1px solid #ffffff10; }
-.mrow small { opacity: .6; }
-select, input[type=text], input[type=number] { background: #211a12; color: var(--text); border: 1px solid var(--gold2); padding: 4px 6px; font-family: inherit; }
-.mrow select, .mrow input[type=text] { min-width: 190px; }
-.mrow input[type=range] { width: 200px; vertical-align: middle; }
-.mfoot { display: flex; justify-content: space-between; gap: 12px; margin-top: 12px; }
-.merr { color: #ff8a7a; min-height: 22px; margin-top: 8px; }
-.frame { background: var(--panel); border: 2px solid var(--gold2); border-radius: 6px; box-shadow: inset 0 0 12px #000c; }
+.mbtn.sm { padding: calc(var(--u) * 5) calc(var(--u) * 12); font-size: calc(var(--u) * 14); }
+.mbtn.icon { padding: calc(var(--u) * 5) calc(var(--u) * 9); font-size: calc(var(--u) * 16); }
+.mpanel { margin: calc(var(--u) * 40) auto; width: min(calc(var(--u) * 980), 94vw); max-height: 88vh; overflow: auto; padding: calc(var(--u) * 22) calc(var(--u) * 28); background: #15110cf2; border: calc(var(--u) * 2) solid var(--gold); border-radius: calc(var(--u) * 10); box-shadow: 0 10px 40px #000a; box-sizing: border-box; }
+.mpanel h2 { margin: 0 0 calc(var(--u) * 14); color: var(--gold3); font-size: calc(var(--u) * 24); }
+.mrow { display: flex; align-items: center; justify-content: space-between; gap: calc(var(--u) * 16); padding: calc(var(--u) * 8) 0; border-bottom: 1px solid #ffffff10; }
+.mrow small { opacity: .6; font-size: .85em; }
+select, input[type=text], input[type=number] { background: #211a12; color: var(--text); border: 1px solid var(--gold2); padding: calc(var(--u) * 5) calc(var(--u) * 7); font: inherit; border-radius: calc(var(--u) * 3); }
+input[type=checkbox] { width: calc(var(--u) * 18); height: calc(var(--u) * 18); accent-color: var(--gold); }
+.mrow select, .mrow input[type=text] { min-width: calc(var(--u) * 200); }
+.mrow input[type=range] { width: calc(var(--u) * 210); vertical-align: middle; accent-color: var(--gold); }
+.mfoot { display: flex; justify-content: space-between; gap: calc(var(--u) * 12); margin-top: calc(var(--u) * 14); }
+.merr { color: #ff8a7a; min-height: calc(var(--u) * 22); margin-top: calc(var(--u) * 8); }
+.frame { background: var(--panel); border: calc(var(--u) * 2) solid var(--gold2); border-radius: calc(var(--u) * 6); box-shadow: inset 0 0 calc(var(--u) * 12) #000c; }

@@ -5,15 +5,17 @@ import { ally, relOf, type Building, type Unit } from '../../core/world.ts';
 import { fmt } from '../../core/sim/index.ts';
 import { FORMS } from '../input/orders.ts';
 import { RES_ICON, icon, DOING, costStr, queueName, queueIcon, HOTKEYS } from './format.ts';
-import type { HudState, CmdItem, CmdButton, Tip, SelectionPanel, Alert, DiploRow, EndInfo, QueueSlot } from './types.ts';
+import type { HudState, CmdItem, CmdButton, Tip, SelectionPanel, Alert, DiploRow, EndInfo, QueueSlot, WorldEvent } from './types.ts';
 import type { GameContext } from '../context.ts';
 
 const PUSH_MS = 100;
+const EVENT_ICON: Record<string, string> = { drought: '☀️', harvest: '🌾', plague: '☠️', deposit: '⛏️', settlers: '🧳', quake: '🌋', scholar: '📜' };
+const EVENT_SHOW = 2.5 * 60 * 10; // событие висит в ленте 2,5 минуты (или пока действует)
 const GOAL_LABEL: Record<string, string> = { eco: 'экономическая победа через', cult: 'культурная победа через', sci: 'Просвещение через' };
 
 export function useHud(ctx: GameContext) {
   const { S } = ctx, { w, ME, net, send, debug, who, hex } = ctx.session;
-  let dirty = true, lastPush = 0, hover = '', box: HudState['box'] = null, message = '';
+  let dirty = true, lastPush = 0, hover = '', box: HudState['box'] = null, message = '', notice = '', noticeUntil = 0;
   let menu = false, dipOpen = false, end: EndInfo | null = null;
   const pendingQ = new Map<number, number>(); // заказы, ещё не дошедшие до симуляции (для раздачи по зданиям)
   let hotkeys: Record<string, string> = {};
@@ -150,6 +152,23 @@ export function useHud(ctx: GameContext) {
     return rows;
   }
 
+  // ---------- Лента событий мира ----------
+  function events(): WorldEvent[] {
+    const out: WorldEvent[] = [];
+    w.chron.forEach((c, id) => {
+      if (c.p >= 0 || !c.kind) return;
+      const active = (c.until ?? 0) > w.tick;
+      if (!active && w.tick - c.tick > EVENT_SHOW) return;
+      const ago = Math.floor((w.tick - c.tick) / 600);
+      out.push({
+        id, icon: EVENT_ICON[c.kind] ?? '📢', text: ctx.alerts.names(c.text), mine: c.who === ME, fresh: w.tick - c.tick < 100,
+        ago: ago < 1 ? 'только что' : `${ago} мин назад`, left: active ? `ещё ${fmt(c.until! - w.tick)}` : undefined,
+        a: c.x !== undefined && c.y !== undefined ? `look:${c.x}:${c.y}` : undefined,
+      });
+    });
+    return out.slice(-6).reverse(); // свежие сверху
+  }
+
   // ---------- Итог матча ----------
   function finish(): EndInfo {
     const P = w.players[ME], won = w.winner >= 0 && ally(w, w.winner, ME);
@@ -179,7 +198,7 @@ export function useHud(ctx: GameContext) {
         regions: `${w.regions.filter((r) => r.owner === ME).length}/${w.regions.length}`, culture: BRANCHES.map((b) => BRANCH[b].icon + cultureLevel(P, b)).join(' '),
       },
       age: { name: `${AGE_NAMES[P.age]} эпоха`, sub: `${identity(P)} цивилизация · ${SETTLE[P.settle].name}${P.ageing ? ' · переход в новую эпоху…' : ''}` },
-      hover, news: ctx.alerts.news(), message, alerts: alerts(), diplomacy: dipOpen ? diplomacy() : null,
+      hover, news: ctx.alerts.news(), message, notice: performance.now() < noticeUntil ? notice : '', events: events(), alerts: alerts(), diplomacy: dipOpen ? diplomacy() : null,
       selection: selection(), commands: commands(), box, menu, canPause: !net, debug, amove: ctx.controls?.amove ?? false,
       uiScale: S.uiScale, hints: S.hints, end,
     };
@@ -217,6 +236,7 @@ export function useHud(ctx: GameContext) {
     if (k === 'dip') send({ p: ME, t: 'diplo', to: Number(x), rel: Number(y) });
     if (k === 'tri') send({ p: ME, t: 'tribute', to: Number(x), res: y as Res, amount: 100 });
     if (k === 'mkt') send({ p: ME, t: 'trade', building: Number(x), res: y as Res, buy: z === '1' });
+    if (k === 'look') ctx.camera.lookAt(Number(x) + 0.5, Number(y) + 0.5);
     if (k === 'menu') menu = x === undefined ? !menu : x === '1'; // меню паузы; в сетевой игре время не останавливается
     if (k === 'diplo') dipOpen = x === undefined ? !dipOpen : x === '1';
     dirty = true;
@@ -227,6 +247,8 @@ export function useHud(ctx: GameContext) {
     setHover(t: string) { if (t !== hover) { hover = t; dirty = true; } },
     setBox(b: HudState['box']) { box = b; dirty = true; },
     setMessage(t: string) { message = t; dirty = true; },
+    /** Уведомление на несколько секунд */
+    notice(t: string, ms = 6000) { notice = t; noticeUntil = performance.now() + ms; dirty = true; },
     /** Действие кнопки по букве (актуально на момент последнего снимка) */
     hotkey: (letter: string) => hotkeys[letter],
     get paused() { return menu && !net; },

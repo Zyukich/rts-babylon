@@ -64,9 +64,9 @@ function start() {
 </template>
 
 <style scoped>
-.grid { display: grid; grid-template-columns: 1fr 1.25fr; gap: 26px; }
+.grid { display: grid; grid-template-columns: 1fr 1.25fr; gap: calc(var(--u) * 26); }
 table.slots { border-collapse: collapse; width: 100%; }
-table.slots th { text-align: left; color: var(--gold); font-weight: 500; padding: 4px; }
-table.slots td { padding: 3px 4px; }
-.sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: middle; border: 1px solid #0008; }
+table.slots th { text-align: left; color: var(--gold); font-weight: 500; padding: calc(var(--u) * 4); }
+table.slots td { padding: calc(var(--u) * 3) calc(var(--u) * 4); }
+.sw { display: inline-block; width: calc(var(--u) * 12); height: calc(var(--u) * 12); border-radius: calc(var(--u) * 3); margin-right: calc(var(--u) * 6); vertical-align: middle; border: 1px solid #0008; }
 </style>

@@ -5,6 +5,7 @@
 //   npm run assets -- --force    перекачать и пересобрать всё
 //   npm run assets:check         только проверить каталог (без скачивания), код 1 при ошибках
 //   npm run assets:list -- <пак или файл>   какие модели в паке и какие у них анимации
+//   node scripts/assets/build.mjs --prune     собрать и удалить из public/assets всё, на что манифест не ссылается (для Docker)
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -16,7 +17,7 @@ const OUT = path.join(ROOT, 'public/assets');     // собранное (в git 
 const CACHE = path.join(SRC, '.cache');           // скачанные архивы паков
 const VERSION = 1;
 const argv = process.argv.slice(2), has = (f) => argv.includes(f);
-const FORCE = has('--force'), CHECK = has('--check'), IF_MISSING = has('--if-missing');
+const FORCE = has('--force'), CHECK = has('--check'), IF_MISSING = has('--if-missing'), PRUNE = has('--prune');
 const KEEP = /\.(gltf|glb|bin|png|jpe?g|webp|ktx2)$/i;
 const OWN = ['models', 'textures', 'sounds'];     // свои папки копируются как есть
 
@@ -51,7 +52,7 @@ function gltfInfo(relPath) {
     try {
       const j = readGltf(abs), dir = path.dirname(abs);
       const uris = [...(j.buffers ?? []), ...(j.images ?? [])].map((x) => x.uri).filter((u) => u && !u.startsWith('data:'));
-      info = { anims: (j.animations ?? []).map((a) => a.name ?? ''), skinned: !!j.skins?.length, missing: uris.filter((u) => !fs.existsSync(path.join(dir, decodeURIComponent(u)))) };
+      info = { anims: (j.animations ?? []).map((a) => a.name ?? ''), skinned: !!j.skins?.length, parts: (j.nodes ?? []).filter((n) => n.mesh !== undefined).map((n) => n.name ?? ''), bones: (j.skins ?? []).flatMap((sk) => sk.joints.map((i) => j.nodes[i]?.name ?? '')), materials: (j.materials ?? []).map((m) => m.name ?? ''), missing: uris.filter((u) => !fs.existsSync(path.join(dir, decodeURIComponent(u)))) };
     } catch (e) { info = { error: e.message }; }
   }
   gltfCache.set(relPath, info);
@@ -93,7 +94,7 @@ async function preparePack(id, p) {
       console.log(`${(data.length / 1e6).toFixed(1)} МБ`);
     }
   } else return err(`пак ${id}: нужен url или zip`);
-  const files = unzipSync(data, { filter: (f) => KEEP.test(f.name) && !/\/(fbx|obj|blend|previews?|screenshots?)\//i.test(f.name) });
+  const files = unzipSync(data, { filter: (f) => KEEP.test(f.name) && !/\/(fbx|obj|blend|previews?|screenshots?)\//i.test(f.name) && !/(^|\/)(__MACOSX\/|\._)/.test(f.name) }); // __MACOSX, ._файлы — мусор архиватора macOS
   fs.rmSync(dst, { recursive: true, force: true });
   for (const [name, bytes] of Object.entries(files)) {
     const inner = p.stripRoot ? name.split('/').slice(1).join('/') : name; // github-архивы: без корневой папки
@@ -134,30 +135,50 @@ async function prepareTexture(key, t) {
 
 // ---------- Манифест ----------
 function buildManifest(cat, hash) {
-  const packs = strip(cat.packs), man = { version: VERSION, catalog: hash, units: {}, buildings: {}, textures: {}, sounds: {} };
+  const packs = strip(cat.packs), man = { version: VERSION, catalog: hash, units: {}, buildings: {}, textures: {}, sounds: {}, nature: {} };
+  const globRe = (p) => new RegExp(`^${p.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`);
   for (const [type, u] of Object.entries(strip(cat.units))) {
     if (!u.model) continue;
     const file = model(u.model, packs, `юнит ${type}`);
     if (!file) continue;
-    const anims = {};
+    const info = gltfInfo(file), anims = {};
     for (const [key, a] of Object.entries(u.anims ?? {})) {
       const spec = typeof a === 'string' ? { file, name: a } : { file: a.file ? model(a.file, packs, `юнит ${type}.${key}`) : file, name: a.name };
       if (!spec.file) continue;
-      const info = gltfInfo(spec.file);
-      if (info?.anims && !info.anims.includes(spec.name)) { err(`юнит ${type}: в ${spec.file} нет анимации «${spec.name}» (есть: ${info.anims.slice(0, 12).join(', ')}${info.anims.length > 12 ? '…' : ''})`); continue; }
+      const ai = gltfInfo(spec.file);
+      if (ai?.anims && !ai.anims.includes(spec.name)) { err(`юнит ${type}: в ${spec.file} нет анимации «${spec.name}» (есть: ${ai.anims.slice(0, 12).join(', ')}${ai.anims.length > 12 ? '…' : ''})`); continue; }
       anims[key] = spec;
     }
-    if (!anims.idle && !anims.walk) { warn(`юнит ${type}: нет ни idle, ни walk — будет процедурная модель`); continue; }
-    man.units[type] = { file, anims };
+    if (u.anims && Object.keys(u.anims).length && !anims.idle && !anims.walk) { warn(`юнит ${type}: нет ни idle, ни walk — будет процедурная модель`); continue; }
+    const checkParts = (where, inf, f, parts = [], team = []) => { // опечатка в имени части/материала — ошибка
+      if (!inf?.parts) return;
+      for (const p of parts) if (!inf.parts.some((n) => globRe(p).test(n))) err(`${where}: в ${f} нет части «${p}» (есть: ${inf.parts.join(', ')})`);
+      for (const p of team) if (![...inf.parts, ...inf.materials].some((n) => globRe(p).test(n))) err(`${where}: в ${f} нет части или материала «${p}» (материалы: ${inf.materials.join(', ')})`);
+    };
+    checkParts(`юнит ${type}`, info, file, u.parts, u.team);
+    const spec = { file, anims };
+    for (const k of ['parts', 'team', 'scale', 'length', 'rotate']) if (u[k] !== undefined) spec[k] = u[k];
+    if (u.rider) { // всадник: персонаж на кости коня
+      const r = u.rider, rf = model(r.file, packs, `юнит ${type}.rider`), ri = rf && gltfInfo(rf);
+      if (info?.bones && !info.bones.includes(r.bone)) err(`юнит ${type}: у ${file} нет кости «${r.bone}» (есть: ${info.bones.slice(0, 16).join(', ')}…)`);
+      if (ri?.anims && r.anim && !ri.anims.includes(r.anim)) err(`юнит ${type}: у всадника ${rf} нет анимации «${r.anim}»`);
+      checkParts(`юнит ${type}.rider`, ri, rf, r.parts, r.team);
+      if (rf) spec.rider = { ...r, file: rf };
+    }
+    man.units[type] = spec;
   }
   for (const [type, b] of Object.entries(strip(cat.buildings))) {
     const out = {};
     if (b.ages) {
       const ages = b.ages.map((tier, ti) => tier.map((stages, vi) => stages.map((f, si) => model(f, packs, `здание ${type} [эпоха ${ti}][вариант ${vi}][стадия ${si}]`)).filter(Boolean)).filter((s) => s.length)).filter((t) => t.length);
-      if (ages.length) out.ages = ages;
+      if (ages.length) { out.ages = ages; if (b.fromTier) out.fromTier = b.fromTier; }
     }
     if (b.colors) { const c = b.colors.map((f, i) => model(f, packs, `здание ${type} [цвет ${i}]`)).filter(Boolean); if (c.length) out.colors = c; }
     if (out.ages || out.colors) man.buildings[type] = out;
+  }
+  for (const [key, n] of Object.entries(strip(cat.nature))) { // природа и быт: ключ → файл (+ ветер)
+    const f = n?.file && model(n.file, packs, `природа ${key}`);
+    if (f) man.nature[key] = { file: f, ...(n.wind ? { wind: n.wind } : {}) };
   }
   for (const [key, t] of Object.entries(strip(cat.textures))) {
     const p = t.file ? t.file : `textures/${key}.jpg`;
@@ -168,6 +189,32 @@ function buildManifest(cat, hash) {
     if (fs.existsSync(path.join(OUT, s.file))) man.sounds[key] = { file: s.file, volume: s.volume ?? 1 }; else err(`звук ${key}: нет файла assets/${s.file}`);
   }
   return man;
+}
+
+// ---------- Оставить только нужное игре (образ Docker меньше в разы) ----------
+function prune(man) {
+  const keep = new Set(['manifest.json']);
+  const addModel = (p) => {
+    if (!p || keep.has(p)) return;
+    keep.add(p);
+    const abs = path.join(OUT, p);
+    try { // внешние .bin и картинки glTF
+      const j = readGltf(abs), dir = path.dirname(p);
+      for (const x of [...(j.buffers ?? []), ...(j.images ?? [])]) if (x.uri && !x.uri.startsWith('data:')) keep.add(path.posix.join(dir, decodeURIComponent(x.uri)));
+    } catch { /* не glTF */ }
+  };
+  for (const u of Object.values(man.units)) { addModel(u.file); for (const a of Object.values(u.anims)) addModel(a.file); if (u.rider) addModel(u.rider.file); }
+  for (const b of Object.values(man.buildings)) { (b.ages ?? []).flat(2).forEach(addModel); (b.colors ?? []).forEach(addModel); }
+  for (const t of Object.values(man.textures)) keep.add(t);
+  for (const n of Object.values(man.nature)) addModel(n.file);
+  for (const s of Object.values(man.sounds)) keep.add(s.file);
+  let n = 0, bytes = 0;
+  for (const f of walk(OUT)) {
+    const r = path.relative(OUT, f).split(path.sep).join('/');
+    if (keep.has(r)) continue;
+    bytes += fs.statSync(f).size; fs.rmSync(f); n++;
+  }
+  console.log(`  ✂ удалено неиспользуемых файлов: ${n} (${(bytes / 1e6).toFixed(0)} МБ), осталось ${keep.size}`);
 }
 
 // ---------- Список моделей пака ----------
@@ -200,8 +247,9 @@ if (!CHECK) {
 }
 const man = buildManifest(cat, hash);
 if (!CHECK) fs.writeFileSync(path.join(OUT, 'manifest.json'), JSON.stringify(man, null, 1));
+if (PRUNE && !CHECK) prune(man);
 const total = (o) => Object.keys(strip(o)).length;
-console.log(`  Юниты с моделями: ${Object.keys(man.units).length}/${total(cat.units)} · здания: ${Object.keys(man.buildings).length}/${total(cat.buildings)} · текстуры: ${Object.keys(man.textures).join(', ') || '—'} · звуки: ${Object.keys(man.sounds).length}/${total(cat.sounds)} (остальные — синтез)`);
+console.log(`  Юниты с моделями: ${Object.keys(man.units).length}/${total(cat.units)} · здания: ${Object.keys(man.buildings).length}/${total(cat.buildings)} · текстуры: ${Object.keys(man.textures).join(', ') || '—'} · звуки: ${Object.keys(man.sounds).length}/${total(cat.sounds)} (остальные — синтез) · природа: ${Object.keys(man.nature).length}/${total(cat.nature)}`);
 for (const w of warnings) console.log(`  ⚠ ${w}`);
 for (const e of errors) console.log(`  ✖ ${e}`);
 console.log(errors.length ? `Ошибок: ${errors.length}. Исправьте assets/catalog.json` : `Готово${CHECK ? '' : ` → ${rel(path.join(OUT, 'manifest.json'))}`}. Чего нет — рисуется процедурно.`);

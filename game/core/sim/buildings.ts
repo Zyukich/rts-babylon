@@ -37,6 +37,7 @@ export function build(w: World, u: Unit, target: number) {
       if (nb) return setOrder(u, { t: 'build', target: nb.id });
     }
     if (b.type === 'farm' && !farmer(w, b.id)) return setOrder(u, { t: 'farm', target: b.id, back: false });
+    if (nextJob(w, u, b)) return;
     if (b.type !== 'town_center') for (const r of d.drop ?? []) {
       const n = findRes(w, b.tx + b.ty * w.W, RES.indexOf(r) + 1, 8);
       if (n >= 0) return setOrder(u, { t: 'gather', tile: n, back: false });
@@ -44,19 +45,38 @@ export function build(w: World, u: Unit, target: number) {
     return setOrder(u, idle());
   }
   if (!moveTo(w, u, b.tx, b.ty, d.size, d.size) || !hugRect(w, u, b)) return;
-  b.progress++;
+  buildStep(w, b);
   if (done(b)) { fx(w, 'built', b); onBuilt(w, b); if (b.type === 'pasture') sowWheat(w, b, WHEAT_INIT); } // ферма сразу с полями
-  const mh = maxHp(w, b);
-  b.hp = Math.min(mh, b.hp + Math.ceil(mh / d.time));
+}
+
+/** Шаг стройки: здоровье растёт ровно вместе с прогрессом (полоска = проценты), урон по стройке сохраняется */
+export function buildStep(w: World, b: Building) {
+  const t = BUILDINGS[b.type].time, mh = maxHp(w, b), p = b.progress;
+  b.progress++;
+  b.hp = Math.min(mh, b.hp + Math.floor((mh * (p + 1)) / t) - Math.floor((mh * p) / t));
+}
+
+/** Следующая работа строителя: такое же здание рядом, которому нужна стройка или ремонт; иначе — любая недостроенная постройка рядом */
+function nextJob(w: World, u: Unit, b: Building): boolean {
+  if (u.oq.length) return false; // есть приказы в очереди (Shift) — они главнее
+  let best: Building | null = null, bd = Infinity;
+  for (const e of w.ents.values()) {
+    if (e.kind !== 'b' || e === b || e.owner !== u.owner || e.hp <= 0 || e.auto) continue;
+    const same = e.type === b.type, build = !done(e);
+    if (!build && !(same && e.hp < maxHp(w, e))) continue; // чинить идём только такое же здание
+    const dd = distTo(u.x, u.y, e) + (same ? 0 : 4 * TILE); // такое же — в приоритете
+    if (dd < bd && dd < 12 * TILE) { bd = dd; best = e; }
+  }
+  if (!best) return false;
+  setOrder(u, { t: 'build', target: best.id });
+  return true;
 }
 
 export function updBuilding(w: World, b: Building) {
   const d = BUILDINGS[b.type], P = w.players[b.owner];
   if (!done(b)) { // перестройка стены в ворота/башню идёт сама
     if (b.auto) {
-      b.progress++;
-      const mh = maxHp(w, b);
-      b.hp = Math.min(mh, b.hp + Math.ceil(mh / d.time));
+      buildStep(w, b);
       if (done(b)) { b.auto = 0; fx(w, 'built', b); }
     }
     return;

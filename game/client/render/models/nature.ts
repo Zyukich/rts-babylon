@@ -108,6 +108,25 @@ function rock(scene: Scene, name: string, variant: number) {
   return m;
 }
 
+/** Материал природы: цвет из вершин, светлый ободок силуэта; wind > 0 — колышется от ветра (сильнее к верху, выше from) */
+export function natureMaterial(scene: Scene, name: string, wind = 0, from = 0) {
+  const m = wind > 0 ? new CustomMaterial(name, scene) : new StandardMaterial(name, scene); // CustomMaterial без вставок рисовал чёрным
+  if (m instanceof CustomMaterial) {
+    m.AddUniform('uWind', 'float', 0);
+    m.Vertex_After_WorldPosComputed(`
+      float wph = worldPos.x * 0.35 + worldPos.z * 0.27;
+      float sway = (sin(uWind * 1.6 + wph) * 0.65 + sin(uWind * 3.3 + wph * 2.1) * 0.35) * ${wind.toFixed(3)} * max(position.y - ${from.toFixed(2)}, 0.0);
+      worldPos.x += sway; worldPos.z += sway * 0.6;`);
+    m.onBindObservable.add(() => m.getEffect()?.setFloat('uWind', windT));
+  }
+  m.diffuseColor = Color3.White();
+  m.specularColor = new Color3(0.05, 0.05, 0.05);
+  const fp = new FresnelParameters();
+  fp.leftColor = new Color3(0.3, 0.27, 0.2); fp.rightColor = Color3.Black(); fp.bias = 0.15; fp.power = 2.2;
+  m.emissiveFresnelParameters = fp;
+  return m;
+}
+
 export function makeNature(scene: Scene) {
   seed = 12345;
   const leafMat = (name: string, t: DynamicTexture, tintc: Color3, amp = 0.04) => {

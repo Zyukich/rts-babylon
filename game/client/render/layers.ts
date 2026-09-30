@@ -24,6 +24,7 @@ export function useLayers(scene: Scene) {
     }
     mesh.isPickable = false;
     mesh.alwaysSelectAsActiveMesh = true;
+    mesh.freezeWorldMatrix(); // сам меш не двигается — двигаются инстансы
     mesh.isVisible = false; // пока нет инстансов — не рисовать исходник в углу карты
     let cap = 0, n = 0, last = -1, m = new Float32Array(0), c = new Float32Array(0);
     return {
