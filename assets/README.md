@@ -101,3 +101,18 @@ public/assets/   собранное для игры + manifest.json (не в git
 }
 ```
 `stripRoot` — отрезать корневую папку архива (у архивов GitHub). Распаковываются только glTF/GLB и картинки.
+
+## Свои модели из Blender (`tools/blender`)
+
+Первая эпоха и вся природа сделаны скриптами Blender в едином стиле (палитра и заготовки — `tools/blender/lib.py`):
+
+| Скрипт | Что делает | Куда |
+|---|---|---|
+| `nature.py` | деревья (ствол и крона отдельно — крону качает ветер), кусты, камень, руда, золото, пшеница, декор, быт | `models/nature/` |
+| `buildings.py` | здания первой эпохи, у каждого 3 стадии стройки (`_s0` разметка, `_s1` каркас, `_s2` готово) | `models/primitive/` |
+| `units.py` | житель, дубинщик, охотник, корова: части на шарнирах + анимации idle/walk/attack/work/die(/shoot) | `models/units/` |
+| `preview.py` | лист-превью набора (Cycles) | — |
+
+Blender ставится как модуль Python (нужен Python 3.11): `python3.11 -m venv bpyenv && bpyenv/bin/pip install bpy==4.5.*`,
+затем `bpyenv/bin/python tools/blender/buildings.py [town_center house …]` и `npm run assets`.
+В каталоге здания по эпохам — `ages[ступень][вариант][стадия]`, ступень по эпохе игры — `style.ageTier`; `fromTier` — если у здания нет ранних ступеней.

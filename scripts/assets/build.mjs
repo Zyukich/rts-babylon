@@ -171,7 +171,7 @@ function buildManifest(cat, hash) {
     const out = {};
     if (b.ages) {
       const ages = b.ages.map((tier, ti) => tier.map((stages, vi) => stages.map((f, si) => model(f, packs, `здание ${type} [эпоха ${ti}][вариант ${vi}][стадия ${si}]`)).filter(Boolean)).filter((s) => s.length)).filter((t) => t.length);
-      if (ages.length) out.ages = ages;
+      if (ages.length) { out.ages = ages; if (b.fromTier) out.fromTier = b.fromTier; }
     }
     if (b.colors) { const c = b.colors.map((f, i) => model(f, packs, `здание ${type} [цвет ${i}]`)).filter(Boolean); if (c.length) out.colors = c; }
     if (out.ages || out.colors) man.buildings[type] = out;

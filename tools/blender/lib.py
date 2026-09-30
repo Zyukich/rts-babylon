@@ -17,7 +17,7 @@ PAL = {
     'leaf': (0.26, 0.47, 0.16), 'leaf_dark': (0.13, 0.3, 0.1), 'leaf_light': (0.5, 0.68, 0.24), 'pine': (0.13, 0.33, 0.18), 'pine_light': (0.3, 0.5, 0.25),
     'autumn_y': (0.88, 0.68, 0.18), 'autumn_o': (0.86, 0.42, 0.14), 'birch': (0.9, 0.88, 0.82), 'berry': (0.78, 0.1, 0.18),
     'ember': (1.0, 0.45, 0.1), 'wheat': (0.9, 0.74, 0.32), 'wheat_dark': (0.66, 0.5, 0.2), 'grass': (0.36, 0.55, 0.2), 'fire': (1.0, 0.55, 0.15),
-    'team': (1.0, 1.0, 1.0), 'cow': (0.52, 0.35, 0.24), 'cow_light': (0.9, 0.86, 0.78), 'horn': (0.86, 0.8, 0.66), 'hoof': (0.18, 0.14, 0.1),
+    'team': (1.0, 1.0, 1.0), 'Team': (0.95, 0.95, 0.95), 'cow': (0.52, 0.35, 0.24), 'cow_light': (0.9, 0.86, 0.78), 'horn': (0.86, 0.8, 0.66), 'hoof': (0.18, 0.14, 0.1),
     'ore': (0.52, 0.3, 0.22), 'ore_vein': (0.74, 0.38, 0.22), 'stone_ore': (0.5, 0.46, 0.43),
     'leaf_mid': (0.33, 0.55, 0.2), 'autumn_y2': (0.95, 0.8, 0.3), 'autumn_o2': (0.78, 0.3, 0.1), 'autumn_r': (0.7, 0.22, 0.12),
 }
@@ -192,7 +192,7 @@ def export(objs, path, anims=False, colors=True):
     kw = dict(filepath=path, export_format='GLB', use_selection=True, export_apply=True, export_yup=True,
               export_texcoords=False, export_normals=True, export_materials='EXPORT', export_extras=False,
               export_animations=anims, export_vertex_color='ACTIVE' if colors else 'NONE')
-    if anims: kw.update(export_animation_mode='NLA_TRACKS', export_force_sampling=True, export_frame_step=1, export_def_bones=True, export_optimize_animation_size=False)
+    if anims: kw.update(export_animation_mode='NLA_TRACKS', export_force_sampling=True, export_frame_step=1, export_def_bones=True, export_optimize_animation_size=False, export_optimize_animation_keep_anim_object=True)
     bpy.ops.export_scene.gltf(**kw)
     print('  →', path)
 

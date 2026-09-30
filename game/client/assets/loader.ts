@@ -24,7 +24,7 @@ interface AnimRef { file: string; name: string; }
 export interface Manifest {
   version: number;
   units?: Record<string, UnitSpec>;
-  buildings?: Record<string, { ages?: string[][][]; colors?: string[] }>;
+  buildings?: Record<string, { ages?: string[][][]; fromTier?: number; colors?: string[] }>;
   textures?: Record<string, string>;
   sounds?: Record<string, { file: string; volume?: number }>;
   nature?: Record<string, { file: string; wind?: number }>;
@@ -103,6 +103,20 @@ function snapshot(scene: Scene, meshes: AbstractMesh[], skinned: boolean, multi 
     parts.push(p);
   }
   return parts.length ? Mesh.MergeMeshes(parts, true, true, undefined, false, multi) : null; // multi=false — один подмеш (природа: свой материал на всё)
+}
+/** Обход вершин каждого треугольника — по его нормали: у материала природы задние грани отсекаются,
+ *  а после зеркала glTF часть граней оказывалась «изнанкой» к камере — камни и ящики выглядели чёрными */
+function faceOut(m: Mesh) {
+  const p = m.getVerticesData('position'), n = m.getVerticesData('normal'), ix = m.getIndices();
+  if (!p || !n || !ix) return;
+  const out = Array.from(ix);
+  for (let t = 0; t < out.length; t += 3) {
+    const a = out[t] * 3, b = out[t + 1] * 3, c = out[t + 2] * 3;
+    const ux = p[b] - p[a], uy = p[b + 1] - p[a + 1], uz = p[b + 2] - p[a + 2], vx = p[c] - p[a], vy = p[c + 1] - p[a + 1], vz = p[c + 2] - p[a + 2];
+    const gx = uy * vz - uz * vy, gy = uz * vx - ux * vz, gz = ux * vy - uy * vx;
+    if (gx * (n[a] + n[b] + n[c]) + gy * (n[a + 1] + n[b + 1] + n[c + 1]) + gz * (n[a + 2] + n[b + 2] + n[c + 2]) > 0) { const k = out[t + 1]; out[t + 1] = out[t + 2]; out[t + 2] = k; }
+  }
+  m.setIndices(out);
 }
 function normalize(m: Mesh, s: number, ox: number, oy: number, oz: number) {
   m.scaling.setAll(s);
@@ -315,7 +329,7 @@ export async function loadAssets(scene: Scene, man: Manifest, make: (m: Mesh, pe
         }
         if (vs.length) out.push(vs);
       }
-      if (out.length) A.staged[type] = out;
+      if (out.length) { for (let i = 0; i < (spec.fromTier ?? 0); i++) out.unshift(out[0]); A.staged[type] = out; } // fromTier: ранние ступени — тот же вид, без повторной загрузки
     }
     if (spec.colors?.length && !A.staged[type]) { // по цветам игроков
       const ls: LayerLike[] = [];
@@ -349,6 +363,7 @@ export async function loadAssets(scene: Scene, man: Manifest, make: (m: Mesh, pe
       if (m) {
         const col = m.getVerticesData('color'); // glTF хранит цвет вершин линейным, а материал природы (Standard) ждёт sRGB
         if (col) { for (let j = 0; j < col.length; j++) if (j % 4 !== 3) col[j] = Math.pow(col[j], 1 / 2.2); m.setVerticesData('color', col); }
+        faceOut(m);
         m.name = key; m.isPickable = false; A.nature[key] = { mesh: m, wind: spec.wind ?? 0 };
       }
     } catch (e) { console.warn('Природа не загрузилась:', key, e); }

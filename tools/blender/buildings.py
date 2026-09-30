@@ -4,11 +4,15 @@
 import math, sys, os
 sys.path.insert(0, os.path.dirname(__file__))
 from lib import Mesh, T, export, clear
+import bmesh
+from mathutils import Matrix
 
 OUT = os.path.join(os.path.dirname(__file__), '../../assets/models/primitive')
 FILES = []
 
 def save(key, stage, m):
+    # фасад строили к −Y, а камера в игре смотрит на +Y модели — разворачиваем
+    bmesh.ops.rotate(m.bm, verts=list(m.bm.verts), cent=(0, 0, 0), matrix=Matrix.Rotation(math.pi, 3, 'Z'))
     ob = m.obj(f'{key}_s{stage}', lo=0.6, hi=1.0, face_jitter=0.06)
     path = os.path.join(OUT, f'{key}_s{stage}.glb')
     export([ob], path); clear(); FILES.append(path)
@@ -41,6 +45,7 @@ def stones(m, x, y, n=5, r=0.12): # кучка камня
 def thatch_cone(m, r, h, z, seg=12): # конусная соломенная крыша в два слоя + тёмный край
     m.cyl(r, r * 0.35, h * 0.55, 'thatch', T((0, 0, z)), seg=seg, jitter=0.03)
     m.cyl(r * 0.45, 0.06, h * 0.5, 'thatch_dark', T((0, 0, z + h * 0.5)), seg=seg, jitter=0.02)
+    m.cyl(r * 0.72, r * 0.66, 0.05, 'thatch_dark', T((0, 0, z + h * 0.28)), seg=seg) # ряд соломы
     m.cyl(r + 0.03, r - 0.02, 0.07, 'thatch_dark', T((0, 0, z - 0.02)), seg=seg)
 
 def smoke_sticks(m, z, n=4, L=0.35): # жерди, торчащие из дымового отверстия
@@ -51,6 +56,8 @@ def smoke_sticks(m, z, n=4, L=0.35): # жерди, торчащие из дым�
 def gable(m, L, D, z, h, mat='thatch', over=0.18): # двускатная крыша вдоль X
     D2 = D / 2 + over
     m.prism([(-D2, z), (D2, z), (D2, z + 0.1), (0, z + h + 0.08), (-D2, z + 0.1)], L + over * 2, mat)
+    for k in (0.3, 0.62): # ряды соломы
+        for sy in (-1, 1): m.box((L + over * 2 - 0.04, 0.07, 0.045), 'thatch_dark', T((0, sy * D2 * (1 - k), z + 0.1 + h * k - 0.03)))
     m.prism([(-0.09, z + h - 0.02), (0.09, z + h - 0.02), (0, z + h + 0.14)], L + over * 2 + 0.04, 'thatch_dark') # конёк
 
 def horns(m, x, z, s=1.0): # скрещённые жерди на торце крыши
@@ -123,7 +130,7 @@ def drum(m, x, y):
 def round_hut(key, r=0.72, wall=0.72, roof=1.05, seed=1, extras=True):
     for st in range(3):
         m = Mesh(seed)
-        plot(m, r * 2.6, r * 2.6)
+        if st < 2: plot(m, r * 2.6, r * 2.6)
         if st == 0:
             stakes(m, r * 2, r * 2); logpile(m, r * 0.9, -r * 1.0, 3, 0.7, 0.06, 0.3); stones(m, -r * 0.9, -r * 0.9, 4)
             for px, py in ring(10, r)[:6]: m.rock(0.08, 'stone', T((px, py, 0)))
@@ -149,7 +156,7 @@ def tent_hut(key, seed=2): # вытянутая хижина: низкие бр�
     L, D = 1.35, 1.05
     for st in range(3):
         m = Mesh(seed)
-        plot(m, L + 0.6, D + 0.6)
+        if st < 2: plot(m, L + 0.6, D + 0.6)
         if st == 0:
             stakes(m, L, D); logpile(m, 0.2, -D * 0.75, 3, 0.8, 0.06); stones(m, -L * 0.55, -D * 0.6, 3)
         else:
@@ -173,7 +180,7 @@ def town_center():
     L, D, W = 2.3, 1.35, 0.75
     for st in range(3):
         m = Mesh(7)
-        plot(m, 3.1, 3.0)
+        if st < 2: plot(m, 3.1, 3.0)
         if st == 0:
             stakes(m, L, D, 0.45); logpile(m, -0.6, -1.2, 4, 1.0, 0.07, 0); logpile(m, 0.8, 1.15, 3, 0.9, 0.07, 0); stones(m, 1.1, -1.1, 6, 0.14)
             for x in (-L / 2, L / 2): m.box((0.12, D, 0.12), 'stone', T((x, 0, 0)), jitter=0.02)
@@ -236,7 +243,7 @@ def pasture():
     S = 2.8
     for st in range(3):
         m = Mesh(13)
-        plot(m, S + 0.1, S + 0.1, 'mud' if st == 2 else 'soil')
+        if st < 2: plot(m, S + 0.1, S + 0.1, 'mud' if st == 2 else 'soil')
         h = S / 2
         if st == 0:
             stakes(m, S, S, 0.45); logpile(m, 0.3, -h + 0.3, 3, 0.9, 0.06); logpile(m, -0.6, 0.4, 2, 0.9, 0.06, 1.2)
@@ -257,7 +264,7 @@ def pasture():
 def camp():
     for st in range(3):
         m = Mesh(17)
-        plot(m, 2.0, 2.0)
+        if st < 2: plot(m, 2.0, 2.0)
         if st == 0:
             stakes(m, 1.6, 1.4); logpile(m, -0.3, -0.4, 3, 0.8, 0.06)
         else:
@@ -281,7 +288,7 @@ def camp():
 def barracks():
     for st in range(3):
         m = Mesh(19)
-        plot(m, 3.0, 3.0)
+        if st < 2: plot(m, 3.0, 3.0)
         if st == 0:
             stakes(m, 2.6, 2.6, 0.45); logpile(m, 0.5, -0.9, 4, 0.9, 0.065); stones(m, -0.9, -0.9, 5)
             for px, py in ring(9, 0.85)[:5]: m.rock(0.09, 'stone', T((px - 0.3, py + 0.4, 0)))

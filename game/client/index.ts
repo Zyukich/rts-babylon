@@ -58,6 +58,7 @@ export async function createGame(canvas: HTMLCanvasElement, opts: GameOptions): 
     setVolume((ctx.S.master / 100) * (ctx.S.sfx / 100));
     // ---------- сцена ----------
     ctx.stage = useStage(ctx, canvas);
+    if (/[?&]debug/.test(location.search)) (globalThis as { __scene?: unknown }).__scene = ctx.stage.scene; // /play?debug — сцена доступна из консоли
     ctx.gfx = useLayers(ctx.stage.scene);
     ctx.terrain = useTerrain(ctx);
     ctx.fog = new Fog(w, ME, ctx.stage.scene, SKIRT, ctx.session.fogMode);
